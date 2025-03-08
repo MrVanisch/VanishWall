@@ -18,8 +18,6 @@ VanishWall to system ochrony sieci wykorzystujący analizę ruchu oraz mechanizm
 
 1️⃣ Pobierz repozytorium
 
-git clone https://github.com/twoje-konto/VanishWall.git
-cd VanishWall
 
 2️⃣ Stwórz i aktywuj wirtualne środowisko
 
