@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="container">
+            <h2 class="text-center">🔒 Logowanie</h2>
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    <label class="form-label">👤 Nazwa użytkownika</label>
+                    {{ form.username(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">🔑 Hasło</label>
+                    {{ form.password(class="form-control") }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Zaloguj</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

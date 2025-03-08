@@ -6,4 +6,6 @@ CONFIG = {
     "enable_dns_amplification_protection": True,  # Ochrona przed DNS Amplification
     "enable_ntp_protection": True,  # Ochrona przed NTP Amplification
     "enable_bypass_protection": True, # Ochrona przed próbą obejścia systemu
+    "enable_ai_protection": True, # Włączenie monitorowania ruchu z wykorzystaniem AI
 }
+

@@ -1,0 +1,12 @@
+scapy
+numpy
+scikit-learn
+pandas
+tensorflow
+
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Bcrypt
+Flask-WTF
+WTForms

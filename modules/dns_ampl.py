@@ -22,22 +22,27 @@ packet_queue = queue.Queue()
 # Słownik do monitorowania ilości dużych odpowiedzi DNS od danego IP
 dns_counters = {}
 
+# Flaga kontrolna do zatrzymywania wątków
+stop_event = threading.Event()
+
 def process_dns_packets():
     """Przetwarza pakiety DNS z kolejki i aktualizuje liczniki IP"""
-    while True:
-        packet = packet_queue.get()
+    while not stop_event.is_set():
         try:
+            packet = packet_queue.get(timeout=1)
             if packet.haslayer(IP) and packet.haslayer(UDP) and packet.haslayer(DNS):
                 if packet[UDP].sport == 53 and len(packet) > DNS_SIZE_THRESHOLD:
                     ip_src = packet[IP].src
                     dns_counters[ip_src] = dns_counters.get(ip_src, 0) + 1
+            packet_queue.task_done()
+        except queue.Empty:
+            continue
         except Exception as e:
             system_logger.error(f"❌ Błąd w process_dns_packets: {e}")
-        packet_queue.task_done()
 
 def monitor_dns_traffic():
     """Sprawdza liczbę dużych odpowiedzi DNS i blokuje IP, jeśli przekroczy limit"""
-    while True:
+    while not stop_event.is_set():
         time.sleep(CHECK_INTERVAL)
 
         for ip, dns_count in list(dns_counters.items()):
@@ -51,17 +56,21 @@ def monitor_dns_traffic():
 
 def analyze_dns_packet(packet):
     """Dodaje pakiet DNS do kolejki do analizy"""
-    packet_queue.put(packet)
+    if not stop_event.is_set():
+        packet_queue.put(packet)
 
-def start_dns_protection():
+def start_dns_ampl():
     """Uruchamia wykrywanie ataków DNS Amplification"""
     print("🛡️ Ochrona przed DNS Amplification uruchomiona...")
+    stop_event.clear()
 
-    # Wątek do przetwarzania pakietów DNS w czasie rzeczywistym
     threading.Thread(target=process_dns_packets, daemon=True).start()
-
-    # Wątek do sprawdzania liczby dużych pakietów DNS
     threading.Thread(target=monitor_dns_traffic, daemon=True).start()
 
-    # Nasłuchiwanie pakietów DNS na porcie UDP 53
-    sniff(filter="udp port 53", prn=analyze_dns_packet, store=False)
+    sniff(filter="udp port 53", prn=analyze_dns_packet, store=False, stop_filter=lambda _: stop_event.is_set())
+
+def stop_dns_ampl():
+    """Zatrzymuje ochronę przed DNS Amplification"""
+    print("🛑 Zatrzymywanie ochrony przed DNS Amplification...")
+    stop_event.set()
+    packet_queue.queue.clear()

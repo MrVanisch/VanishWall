@@ -1,64 +1,37 @@
 # -*- coding: utf-8 -*-
 import threading
 import time
+import os
 from config import CONFIG
-from modules.logger import system_logger, log_active_modules
-from modules.traffic_monitor import start_traffic_monitor
-from modules.bandwidth_limiter import start_bandwidth_limiter
-from modules.syn_flood import start_syn_protection
-from modules.udp_flood import start_udp_protection
-from modules.dns_ampl import start_dns_protection
-from modules.ntp_ampl import start_ntp_protection
-from modules.bypass_protection_system import start_bypass_protection
+from modules.logger import system_logger
+from api.app import db, create_default_admin, app
 
-def main():
-    """Główna funkcja uruchamiająca moduły ochrony"""
-    print("🚀 Uruchamiam system ACL...")
-    system_logger.info("System ACL został uruchomiony.")
+def start_flask_app():
+    """Uruchamia API Flask w osobnym wątku."""
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
 
-    # Logowanie aktywnych modułów
-    log_active_modules(CONFIG)
+def initialize_database():
+    """Tworzy bazę danych, jeśli nie istnieje."""
+    db_path = os.path.join(app.instance_path, "database.db")
 
-    # Lista modułów do uruchomienia w osobnych wątkach
-    modules = []
+    # Tworzymy folder instance, jeśli nie istnieje
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
-    if CONFIG["enable_traffic_monitor"]:
-        modules.append(threading.Thread(target=start_traffic_monitor, daemon=True))
-    
-    if CONFIG["enable_bandwidth_limiter"]:
-        system_logger.info("🛡️ Ochrona Bandwidth Limiter aktywna")
-        modules.append(threading.Thread(target=start_bandwidth_limiter, daemon=True))
-    
-    if CONFIG["enable_syn_flood_protection"]:
-        system_logger.info("🛡️ Ochrona SYN Flood aktywna")
-        modules.append(threading.Thread(target=start_syn_protection, daemon=True))
+    with app.app_context():
+        print("📂 Sprawdzam bazę danych...")
+        db.create_all()
+        create_default_admin()
+        print("✅ Baza danych i użytkownik admin zostały utworzone.")
 
-    if CONFIG["enable_udp_flood_protection"]:
-        system_logger.info("🛡️ Ochrona UDP Flood aktywna")
-        modules.append(threading.Thread(target=start_udp_protection, daemon=True))
+if __name__ == "__main__":
+    initialize_database()  # Upewniamy się, że baza danych istnieje
 
-    if CONFIG["enable_dns_amplification_protection"]:
-        system_logger.info("🛡️ Ochrona DNS Amplification aktywna")
-        modules.append(threading.Thread(target=start_dns_protection, daemon=True))
-
-    if CONFIG["enable_ntp_protection"]:
-        system_logger.info("🛡️ Ochrona NTP Amplification aktywna")
-        modules.append(threading.Thread(target=start_ntp_protection, daemon=True))
-
-    if CONFIG["enable_bypass_protection"]:
-        system_logger.info("🛡️ Bypass Protection System aktywny")
-        modules.append(threading.Thread(target=start_bypass_protection, daemon=True))
-
-    # Uruchamiamy wszystkie moduły w osobnych wątkach
-    for module in modules:
-        module.start()
+    # Uruchamiamy API Flask
+    api_thread = threading.Thread(target=start_flask_app, daemon=True)
+    api_thread.start()
 
     try:
         while True:
-            time.sleep(1)  
+            time.sleep(1)
     except KeyboardInterrupt:
-        print("\n🛑 Zatrzymywanie systemu ACL...")
-        system_logger.info("System ACL został zatrzymany.")
-
-if __name__ == "__main__":
-    main()
+        print("\n🛑 System zatrzymany.")

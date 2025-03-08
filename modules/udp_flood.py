@@ -21,21 +21,26 @@ packet_queue = queue.Queue()
 # Słownik do monitorowania ilości pakietów UDP od danego IP
 udp_counters = {}
 
+# Flaga kontrolna do zatrzymywania wątków
+stop_event = threading.Event()
+
 def process_udp_packets():
     """Przetwarza pakiety UDP z kolejki i aktualizuje liczniki IP"""
-    while True:
-        packet = packet_queue.get()
+    while not stop_event.is_set():
         try:
+            packet = packet_queue.get(timeout=1)
             if packet.haslayer(IP) and packet.haslayer(UDP):
                 ip_src = packet[IP].src
                 udp_counters[ip_src] = udp_counters.get(ip_src, 0) + 1
+            packet_queue.task_done()
+        except queue.Empty:
+            continue
         except Exception as e:
             system_logger.error(f"❌ Błąd w process_udp_packets: {e}")
-        packet_queue.task_done()
 
 def monitor_udp_traffic():
     """Sprawdza liczbę pakietów UDP i blokuje IP, jeśli przekroczy limit"""
-    while True:
+    while not stop_event.is_set():
         time.sleep(CHECK_INTERVAL)
 
         for ip, udp_count in list(udp_counters.items()):
@@ -49,17 +54,21 @@ def monitor_udp_traffic():
 
 def analyze_udp_packet(packet):
     """Dodaje pakiet UDP do kolejki do analizy"""
-    packet_queue.put(packet)
+    if not stop_event.is_set():
+        packet_queue.put(packet)
 
-def start_udp_protection():
+def start_udp_flood():
     """Uruchamia wykrywanie ataków UDP flood"""
     print("🛡️ Ochrona przed UDP flood uruchomiona...")
+    stop_event.clear()
 
-    # Wątek do przetwarzania pakietów UDP w czasie rzeczywistym
     threading.Thread(target=process_udp_packets, daemon=True).start()
-
-    # Wątek do sprawdzania liczby pakietów UDP
     threading.Thread(target=monitor_udp_traffic, daemon=True).start()
 
-    # Nasłuchiwanie pakietów UDP
-    sniff(filter="udp", prn=analyze_udp_packet, store=False)
+    sniff(filter="udp", prn=analyze_udp_packet, store=False, stop_filter=lambda _: stop_event.is_set())
+
+def stop_udp_flood():
+    """Zatrzymuje ochronę przed UDP flood"""
+    print("🛑 Zatrzymywanie ochrony przed UDP flood...")
+    stop_event.set()
+    packet_queue.queue.clear()

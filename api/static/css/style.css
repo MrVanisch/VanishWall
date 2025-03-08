@@ -1,0 +1,209 @@
+/* Globalne ustawienia */
+body {
+    background-color: #1e1e2f; /* Ciemny szary */
+    color: #e0e0e0; /* Jasnoszary tekst */
+    font-family: 'Arial', sans-serif;
+}
+
+/* Nawigacja */
+.navbar {
+    background-color: #3a2e6f; /* Ciemny fiolet */
+}
+
+.navbar-brand, .nav-link {
+    color: #e0e0e0 !important;
+}
+
+.navbar-nav .nav-item:hover .nav-link {
+    color: #a58eff !important; /* Jasny fiolet */
+}
+
+/* Kontenery */
+.container {
+    background: #2b2b40; /* Ciemnoszary */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Przycisk */
+.btn-primary {
+    background-color: #6a52b3; /* Fioletowy */
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #7c63d0; /* Jaśniejszy fiolet */
+}
+
+/* Formularze */
+.form-control {
+    background: #252538;
+    color: #e0e0e0;
+    border: 1px solid #4e4e66;
+}
+
+.form-control:focus {
+    background: #2f2f4a;
+    color: #fff;
+    border: 1px solid #a58eff;
+}
+
+/* Alerty */
+.alert {
+    border-radius: 5px;
+}
+
+.alert-success {
+    background: #4caf50; /* Zielony */
+    color: white;
+}
+
+.alert-danger {
+    background: #d32f2f; /* Czerwony */
+    color: white;
+}
+
+.alert-info {
+    background: #1976d2; /* Niebieski */
+    color: white;
+}
+
+/* Tabela */
+.table {
+    color: #e0e0e0;
+    background: #2b2b40;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background: #262637;
+}
+
+.table-hover tbody tr:hover {
+    background: #3a3a5a;
+}
+
+/* Stopka */
+.footer {
+    text-align: center;
+    padding: 10px;
+    margin-top: 20px;
+    background-color: #3a2e6f;
+    color: #e0e0e0;
+    border-radius: 5px;
+}
+
+/* ============================= */
+/*         Powiadomienia         */
+/* ============================= */
+
+/* Kontener na powiadomienia */
+#toast-container {
+    position: fixed;
+    top: 30px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    
+    align-items: flex-end; /* Wyrównanie dymków do prawej */
+}
+
+
+.toast {
+    display: inline-flex !important; /* FLEX dla automatycznej szerokości */
+    align-items: center;
+    justify-content: space-between;
+    min-width: fit-content; /* Minimalna szerokość zależna od tekstu */
+    max-width: 500px; /* Maksymalna szerokość, żeby długie teksty nie rozciągały całego ekranu */
+    padding: 6px 10px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+    text-align: left;
+    white-space: nowrap; /* Zapobiega zawijaniu tekstu */
+}
+
+/* Treść powiadomienia */
+.toast span {
+    flex-grow: 1; /* Zajmuje tylko tyle miejsca, ile potrzeba */
+    text-align: left;
+    padding-right: 5px;
+    margin-right: 0px;
+    white-space: nowrap; /* Zapobiega łamaniu tekstu */
+}
+
+/* Przycisk zamykania */
+.toast .close-btn {
+    margin-left: 10px;
+    padding: 2px 6px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* Dodanie ikon do dymków */
+.toast.success::before {
+    content: "✔ "; /* Ikona check */
+    color: #4caf50;
+    font-size: 20px;
+}
+.toast.error::before {
+    content: "✖ "; /* Ikona error */
+    color: #d32f2f;
+    font-size: 20px;
+}
+.toast.info::before {
+    content: "ℹ "; /* Ikona info */
+    color: #1976d2;
+    font-size: 20px;
+}
+.toast.warning::before {
+    content: "⚠ "; /* Ikona warning */
+    color: #ff9800;
+    font-size: 20px;
+}
+
+/* Przycisk zamykania */
+.toast .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.toast {
+    animation: slideIn 0.5s ease-out, fadeOut 0.5s ease-out 4s forwards;
+}
