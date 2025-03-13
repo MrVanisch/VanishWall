@@ -9,17 +9,11 @@ VanishWall to system ochrony sieci wykorzystujący analizę ruchu oraz mechanizm
 ```git clone https://github.com/twoje-konto/VanishWall.git ```
 ```cd VanishWall```
 
-2️⃣ Stwórz i aktywuj wirtualne środowisko
-
-```python3 -m venv venv```
-```source venv/bin/activate  # Linux/macOS```
-```venv\Scripts\activate    # Windows```
-
-3️⃣ Zainstaluj wymagane zależności
+2️⃣ Zainstaluj wymagane zależności
 
 ```pip install -r requirements.txt```
 
-4️⃣ Uruchomienie aplikacji
+3️⃣Uruchomienie aplikacji
 
 ```python main.py```
 
