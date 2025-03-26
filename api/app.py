@@ -11,6 +11,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_bcrypt import Bcrypt
 from config import CONFIG
 from modules.logger import system_logger
+from datetime import datetime, timedelta
 
 # Ustawienie katalogu głównego projektu
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -50,7 +51,10 @@ print(f"📌 Finalna lista dostępnych modułów: {list(AVAILABLE_MODULES.keys()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "supersecretkey"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"  # główna domyślna (login)
+app.config["SQLALCHEMY_BINDS"] = {
+    "chart": "sqlite:///chart.db"
+}
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -63,6 +67,15 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     must_change_password = db.Column(db.Boolean, default=True)
+
+class NetworkTraffic(db.Model):
+    __bind_key__ = "chart"  # WSKAZANIE że to ma iść do chart.db
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    total_tcp = db.Column(db.Integer, nullable=False)
+    total_udp = db.Column(db.Integer, nullable=False)
+    total_icmp = db.Column(db.Integer, nullable=False)
+    total_all = db.Column(db.Integer, nullable=False)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -174,6 +187,35 @@ def logout():
     flash("✅ Wylogowano!", "info")
     return redirect(url_for("login"))
 
+from modules.network_traffic import network_traffic_data, start_network_traffic_monitor, stop_network_traffic_monitor
+
+# Dodaj do dostępnych modułów
+AVAILABLE_MODULES["network_traffic"] = {
+    "start": start_network_traffic_monitor,
+    "stop": stop_network_traffic_monitor,
+    "restart": None
+}
+
+@app.route('/api/status', methods=['GET'])
+def get_traffic_status():
+    """Zwraca dane z ostatnich 2 dni do wykresu"""
+    two_days_ago = datetime.utcnow() - timedelta(days=2)
+    entries = NetworkTraffic.query.filter(NetworkTraffic.timestamp >= two_days_ago).all()
+
+    return jsonify({
+        'labels': [e.timestamp.strftime('%Y-%m-%d %H:%M:%S') for e in entries],
+        'tcp_data': [e.total_tcp for e in entries],
+        'udp_data': [e.total_udp for e in entries],
+        'icmp_data': [e.total_icmp for e in entries],
+        'all_data': [e.total_all for e in entries]
+    })
+
+@app.route('/status')
+def status():
+    return render_template('status.html')
+
 if __name__ == "__main__":
+    db.create_all()  # domyślna baza
+    db.create_all(bind='chart')  # utwórz tabelę dla wykresu
     create_default_admin()
     app.run(host="0.0.0.0", port=5000, debug=True)

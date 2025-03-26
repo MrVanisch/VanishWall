@@ -1,11 +1,8 @@
-import sys
-import os
-import importlib
-import threading
+from scapy.all import sniff, IP, TCP, UDP
 import time
 import logging
+import threading
 import queue
-from scapy.all import sniff, IP, TCP, UDP
 from modules.acl import ACLManager
 
 # Pobieramy logger systemowy
@@ -17,11 +14,13 @@ acl = ACLManager(block_time=30)  # Blokada IP na 30 sekund
 # Porty podatne na Bypass Firewall
 BYPASS_PORTS = [80, 443, 53, 22]  # HTTP, HTTPS, DNS, SSH
 CHECK_INTERVAL = 10  # Co ile sekund analizujemy ruch
+
+# Konfiguracja dynamicznych progów zagrożenia
 THREAT_THRESHOLD = 100  # Domyślny próg dla wszystkich portów
 SSH_THRESHOLD = 250  # WYŻSZY próg dla SSH (port 22)
-DECAY_FACTOR = 0.9  # Po każdym cyklu "starzenie" wyników
+DECAY_FACTOR = 0.9  # Po każdym cyklu "starzenie" wyników (zapobiega fałszywym alarmom)
 
-# 🛡️ Biała lista IP
+# 🛡️ Biała lista IP (np. Twoje IP, VPN)
 WHITELISTED_IPS = {""}  # <- Dodaj swoje IP!
 
 # Kolejka do przetwarzania pakietów
@@ -30,103 +29,77 @@ packet_queue = queue.Queue()
 # Baza dynamicznego scoringu IP
 threat_scores = {}
 
-# Flagi kontrolne
-detection_active = False
-detection_thread = None
-monitoring_thread = None
-
+# Flaga kontrolująca działanie systemu
+stop_event = threading.Event()
 
 def calculate_threat(ip, port):
     """Zwiększa punktację IP na podstawie wzorca ruchu"""
     if ip in WHITELISTED_IPS:
-        return
+        return  # Nie liczymy ruchu dla zaufanych IP
 
-    base_score = 5
+    base_score = 5  # Domyślna wartość zagrożenia za pakiet
     if port == 443:
-        base_score *= 1.2
+        base_score *= 1.2  # Ruch HTTPS może być trudniejszy do wykrycia
     elif port == 22:
-        base_score *= 0.5
+        base_score *= 0.5  # ⚠️ SSH ma niższy priorytet, bo jest używane legalnie
     elif port == 53:
-        base_score *= 2
+        base_score *= 2  # DNS może być używane do amplifikacji
 
+    # Zwiększamy punktację zagrożenia
     threat_scores[ip] = threat_scores.get(ip, 0) + base_score
-
 
 def process_bypass_packets():
     """Analizuje pakiety i przypisuje im scoring zagrożenia"""
-    while detection_active:
-        packet = packet_queue.get()
+    while not stop_event.is_set():
         try:
+            packet = packet_queue.get(timeout=1)
             if packet.haslayer(IP) and (packet.haslayer(TCP) or packet.haslayer(UDP)):
                 dst_port = packet[TCP].dport if packet.haslayer(TCP) else packet[UDP].dport
                 if dst_port in BYPASS_PORTS:
                     ip_src = packet[IP].src
                     calculate_threat(ip_src, dst_port)
-        except Exception as e:
-            system_logger.error(f"❌ Błąd w process_bypass_packets: {e}")
-        packet_queue.task_done()
-
+            packet_queue.task_done()
+        except queue.Empty:
+            continue
 
 def monitor_bypass_traffic():
     """Analizuje scoring IP i blokuje podejrzane IP"""
-    while detection_active:
+    while not stop_event.is_set():
         time.sleep(CHECK_INTERVAL)
 
         for ip, score in list(threat_scores.items()):
             threshold = SSH_THRESHOLD if ip in threat_scores and score < SSH_THRESHOLD else THREAT_THRESHOLD
 
             if score > threshold:
-                if not acl.is_blocked(ip):
-                    print(f"🛑 Blokowanie IP {ip} (Threat Score: {score:.1f})")
-                    system_logger.warning(f"Blokowanie IP {ip} (Threat Score: {score:.1f})")
+                if not acl.is_blocked(ip):  # Unikamy podwójnej blokady
+                    print(f"🛑 Bypass Protection System: Blokowanie IP {ip} (Threat Score: {score:.1f})")
+                    system_logger.warning(f"Bypass Protection System: Blokowanie IP {ip} (Threat Score: {score:.1f})")
                     acl.block_ip(ip, reason="Bypass Firewall Attack")
 
         for ip in threat_scores.keys():
             threat_scores[ip] *= DECAY_FACTOR
 
-
 def analyze_bypass_packet(packet):
     """Dodaje pakiet do kolejki do analizy"""
     packet_queue.put(packet)
 
-
 def start_bypass_protection():
     """Uruchamia wykrywanie ataków Bypass Firewall"""
-    global detection_active, detection_thread, monitoring_thread
-    if detection_active:
-        print("⚠️ Ochrona przed bypass już działa!")
-        return
     print("🛡️ Bypass Protection System uruchomiony...")
     system_logger.info("Bypass Protection System został uruchomiony.")
-    detection_active = True
-    detection_thread = threading.Thread(target=process_bypass_packets, daemon=True)
-    detection_thread.start()
-    monitoring_thread = threading.Thread(target=monitor_bypass_traffic, daemon=True)
-    monitoring_thread.start()
-    sniff(filter="tcp or udp", prn=analyze_bypass_packet, store=False)
+    stop_event.clear()
 
+    threading.Thread(target=process_bypass_packets, daemon=True).start()
+    threading.Thread(target=monitor_bypass_traffic, daemon=True).start()
+
+    sniff(filter="tcp or udp", prn=analyze_bypass_packet, store=False, stop_filter=lambda _: stop_event.is_set())
 
 def stop_bypass_protection():
-    """Zatrzymuje ochronę przed bypass"""
-    global detection_active, detection_thread, monitoring_thread
-    if not detection_active:
-        print("⚠️ Ochrona przed bypass nie jest aktywna!")
-        return
-    print("🛑 Zatrzymywanie ochrony przed bypass...")
-    detection_active = False
-    if detection_thread and detection_thread.is_alive():
-        detection_thread.join(timeout=2)
-    if monitoring_thread and monitoring_thread.is_alive():
-        monitoring_thread.join(timeout=2)
-    detection_thread = None
-    monitoring_thread = None
-    print("✅ Ochrona przed bypass została zatrzymana.")
-
-
-def restart_bypass_protection():
-    """Restartuje ochronę przed bypass"""
-    print("🔄 Restartowanie ochrony przed bypass...")
-    stop_bypass_protection()
-    time.sleep(1)
-    start_bypass_protection()
-    print("✅ Restart ochrony przed bypass zakończony.")
+    """Zatrzymuje system ochrony Bypass Firewall"""
+    print("🛑 Zatrzymywanie Bypass Protection System...")
+    system_logger.info("Bypass Protection System jest zatrzymywany.")
+    stop_event.set()
+    while not packet_queue.empty():
+        packet_queue.get()
+        packet_queue.task_done()
+    print("✅ Bypass Protection System zatrzymany.")

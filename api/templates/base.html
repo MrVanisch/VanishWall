@@ -18,6 +18,7 @@
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item"><a class="nav-link" href="/">Reguły</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/status">Status</a></li> <!-- Dodana zakładka Status -->
                         <li class="nav-item"><a class="nav-link" href="/change_password">Zmień hasło</a></li>
                         <li class="nav-item"><a class="nav-link" href="/logout">Wyloguj</a></li>
                     {% else %}

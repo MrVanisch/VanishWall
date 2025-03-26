@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Status Ruchu Sieciowego - ACL Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">ACL Manager</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item"><a class="nav-link" href="/">Reguły</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/status">Status</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/change_password">Zmień hasło</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/logout">Wyloguj</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="/login">Zaloguj</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Status Ruchu Sieciowego</h1>
+        <p>Na tej stronie znajdziesz wykres pokazujący status ruchu sieciowego.</p>
+
+        <!-- Przyciski zakresu czasu -->
+        <div class="btn-group mb-3" role="group">
+            <button class="btn btn-outline-light" onclick="fetchTrafficData(5)">5 min</button>
+            <button class="btn btn-outline-light" onclick="fetchTrafficData(30)">30 min</button>
+            <button class="btn btn-outline-light" onclick="fetchTrafficData(60)">60 min</button>
+            <button class="btn btn-outline-light" onclick="fetchTrafficData(120)">2h</button>
+            <button class="btn btn-outline-light" onclick="fetchTrafficData()">Wszystko</button>
+        </div>
+
+        <!-- Wykres -->
+        <canvas id="trafficChart"></canvas>
+    </div>
+
+    <footer class="footer">
+        &copy; 2025 ACL Manager - Projekt inżynierski
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <script>
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'TCP Pakiety',
+                        borderColor: 'rgb(75, 192, 192)',
+                        data: [],
+                        fill: false
+                    },
+                    {
+                        label: 'UDP Pakiety',
+                        borderColor: 'rgb(255, 99, 132)',
+                        data: [],
+                        fill: false
+                    },
+                    {
+                        label: 'ICMP Pakiety',
+                        borderColor: 'rgb(153, 102, 255)',
+                        data: [],
+                        fill: false
+                    },
+                    {
+                        label: 'Wszystkie Pakiety',
+                        borderColor: 'rgb(255, 159, 64)',
+                        data: [],
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'category',
+                        position: 'bottom',
+                        ticks: {
+                            color: '#e0e0e0',
+                            maxRotation: 45,
+                            minRotation: 30,
+                            autoSkip: true,
+                            maxTicksLimit: 10  // 👈 ograniczamy liczbę ticków
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                }
+            }
+        });
+    
+        // 🔁 Pobieranie danych
+        function fetchTrafficData() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.labels && data.labels.length > 0) {
+                        // ✂️ Formatowanie czasu do HH:mm
+                        const formattedLabels = data.labels.map(label => {
+                            const d = new Date(label);
+                            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        });
+    
+                        trafficChart.data.labels = formattedLabels;
+                        trafficChart.data.datasets[0].data = data.tcp_data;
+                        trafficChart.data.datasets[1].data = data.udp_data;
+                        trafficChart.data.datasets[2].data = data.icmp_data;
+                        trafficChart.data.datasets[3].data = data.all_data;
+                        trafficChart.update();
+                    }
+                })
+                .catch(error => {
+                    console.error('Błąd przy pobieraniu danych:', error);
+                });
+        }
+    
+        setInterval(fetchTrafficData, 5000);
+        fetchTrafficData();
+    </script>
+    
+</body>
+
+</html>
