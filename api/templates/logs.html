@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-3">Podgląd logów</h3>
+
+<div class="mb-3">
+    <label for="logType" class="form-label">Wybierz typ logu:</label>
+    <select id="logType" class="form-select">
+        <option value="system">System</option>
+        <option value="traffic">Ruch</option>
+        <option value="security">Bezpieczeństwo</option>
+        <option value="debug">Debug</option>
+    </select>
+</div>
+
+<div class="mb-3">
+    <button id="refreshLog" class="btn btn-primary">Odśwież</button>
+    <a id="downloadLink" class="btn btn-outline-secondary" href="#" download>Pobierz</a>
+</div>
+
+<pre id="logViewer" class="log-output"></pre>
+
+<script>
+    async function loadLog() {
+        const type = document.getElementById("logType").value;
+        const viewer = document.getElementById("logViewer");
+        const response = await fetch(`/api/logs/${type}`);
+        if (response.ok) {
+            const lines = await response.json();
+            viewer.textContent = lines.join("");
+            document.getElementById("downloadLink").href = `/download/log/${type}`;
+        } else {
+            viewer.textContent = "❌ Nie udało się załadować logu.";
+        }
+    }
+
+    document.getElementById("refreshLog").addEventListener("click", loadLog);
+    document.getElementById("logType").addEventListener("change", loadLog);
+
+    loadLog();  // domyślne ładowanie
+</script>
+{% endblock %}

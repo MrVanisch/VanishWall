@@ -69,13 +69,16 @@ class User(UserMixin, db.Model):
     must_change_password = db.Column(db.Boolean, default=True)
 
 class NetworkTraffic(db.Model):
-    __bind_key__ = "chart"  # WSKAZANIE że to ma iść do chart.db
+    __bind_key__ = "chart"
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False)
     total_tcp = db.Column(db.Integer, nullable=False)
     total_udp = db.Column(db.Integer, nullable=False)
     total_icmp = db.Column(db.Integer, nullable=False)
     total_all = db.Column(db.Integer, nullable=False)
+    sent_packets = db.Column(db.Integer, nullable=False, default=0)
+    received_packets = db.Column(db.Integer, nullable=False, default=0)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -184,7 +187,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash("✅ Wylogowano!", "info")
+    flash(" Wylogowano!", "info")
     return redirect(url_for("login"))
 
 from modules.network_traffic import network_traffic_data, start_network_traffic_monitor, stop_network_traffic_monitor
@@ -196,23 +199,88 @@ AVAILABLE_MODULES["network_traffic"] = {
     "restart": None
 }
 
+
 @app.route('/api/status', methods=['GET'])
 def get_traffic_status():
-    """Zwraca dane z ostatnich 2 dni do wykresu"""
-    two_days_ago = datetime.utcnow() - timedelta(days=2)
-    entries = NetworkTraffic.query.filter(NetworkTraffic.timestamp >= two_days_ago).all()
+    range_minutes = request.args.get("range", type=int)
+
+    if range_minutes:
+        time_threshold = datetime.utcnow() - timedelta(minutes=range_minutes)
+    else:
+        time_threshold = datetime.utcnow() - timedelta(days=2)
+
+    entries = NetworkTraffic.query.filter(NetworkTraffic.timestamp >= time_threshold).all()
 
     return jsonify({
-        'labels': [e.timestamp.strftime('%Y-%m-%d %H:%M:%S') for e in entries],
+        'labels':   [(e.timestamp + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S') for e in entries],
         'tcp_data': [e.total_tcp for e in entries],
         'udp_data': [e.total_udp for e in entries],
         'icmp_data': [e.total_icmp for e in entries],
-        'all_data': [e.total_all for e in entries]
+        'all_data': [e.total_all for e in entries],
+        'sent_data': [e.sent_packets for e in entries],
+        'received_data': [e.received_packets for e in entries],
+
+        # ⬇️⬇️⬇️ TO DODAJ:
+        'ratio_data': [
+            (e.sent_packets / e.received_packets) if e.received_packets > 0 else 0
+            for e in entries
+        ]
     })
 
 @app.route('/status')
 def status():
     return render_template('status.html')
+
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+
+LOG_FILES = {
+    "system": os.path.join(LOG_DIR, "system.log"),
+    "traffic": os.path.join(LOG_DIR, "traffic.log"),
+    "security": os.path.join(LOG_DIR, "security.log"),
+    "debug": os.path.join(LOG_DIR, "debug.log")
+}
+
+
+@app.route("/api/logs/<log_type>")
+@login_required
+def get_log_content(log_type):
+    path = LOG_FILES.get(log_type)
+    if not path or not os.path.exists(path):
+        return abort(404, "Nie znaleziono logu.")
+    
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.readlines()[-500:]  # ostatnie 500 linii
+    return jsonify(lines)
+
+@app.route("/download/log/<log_type>")
+@login_required
+def download_log_file(log_type):
+    path = LOG_FILES.get(log_type)
+    if not path or not os.path.exists(path):
+        return abort(404)
+    return send_file(path, as_attachment=True)
+
+@app.route("/logs")
+@login_required
+def logs():
+    return render_template("logs.html")
+
+#api do procesora i do ramu 
+import psutil
+
+@app.route("/api/system_status")
+@login_required
+def system_status():
+    memory = psutil.virtual_memory()
+    cpu = psutil.cpu_percent(interval=0.5)
+    
+    return jsonify({
+        "cpu": cpu,
+        "memory": memory.percent
+    })
+
+
+
 
 if __name__ == "__main__":
     db.create_all()  # domyślna baza
