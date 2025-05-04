@@ -206,3 +206,15 @@
 2025-04-18 14:07:00 - ACL.System - INFO - app.py:133 - Zatrzymuję moduł: udp_flood
 2025-04-18 14:07:02 - ACL.System - INFO - app.py:121 - Uruchamiam moduł: traffic_monitor
 2025-04-18 14:07:03 - ACL.System - INFO - app.py:133 - Zatrzymuję moduł: traffic_monitor
+2025-04-23 11:45:20 - ACL.System - INFO - app.py:194 - Uruchamiam moduł: traffic_monitor
+2025-05-04 11:23:49 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: traffic_monitor
+2025-05-04 11:35:42 - ACL.System - INFO - app.py:225 - [ADMIN] admin started module: traffic_monitor
+2025-05-04 11:35:45 - ACL.System - INFO - app.py:242 - [ADMIN] admin stopped module: traffic_monitor
+2025-05-04 11:35:46 - ACL.System - INFO - app.py:242 - [ADMIN] admin stopped module: traffic_monitor
+2025-05-04 11:35:47 - ACL.System - INFO - app.py:242 - [ADMIN] admin stopped module: traffic_monitor
+2025-05-04 11:35:49 - ACL.System - INFO - app.py:242 - [ADMIN] admin stopped module: traffic_monitor
+2025-05-04 11:35:50 - ACL.System - INFO - app.py:225 - [ADMIN] admin started module: traffic_monitor
+2025-05-04 11:46:31 - ACL.System - WARNING - app.py:223 - [MODERATOR] kacper started module: traffic_monitor
+2025-05-04 11:46:32 - ACL.System - WARNING - app.py:240 - [MODERATOR] kacper stopped module: traffic_monitor
+2025-05-04 11:46:33 - ACL.System - WARNING - app.py:240 - [MODERATOR] kacper stopped module: traffic_monitor
+2025-05-04 11:47:00 - ACL.System - INFO - app.py:225 - [ADMIN] admin started module: traffic_monitor

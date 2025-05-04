@@ -27,32 +27,45 @@ document.addEventListener("DOMContentLoaded", () => {
     function sendRequest(url, moduleName) {
       const button = document.querySelector(`[data-module="${moduleName}"]`);
       if (button) button.disabled = true;
-  
+    
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: moduleName })
       })
-        .then(res => res.json().then(data => ({ status: res.status, body: data })))
-        .then(({ status, body }) => {
-          if (status === 200 && body.status === "success") {
+        .then(async res => {
+          const isJson = res.headers.get("content-type")?.includes("application/json");
+          const body = isJson ? await res.json() : {};
+    
+          // Obsługa 403 - brak uprawnień
+          if (res.status === 403) {
+            showToast(body.message || "Brak uprawnień do wykonania tej operacji!", "error");
+            throw new Error("403 Forbidden");
+          }
+    
+          if (res.status === 200 && body.status === "success") {
             // 🔄 Dobieranie typu powiadomienia w zależności od akcji
             let toastType = "success";
             if (url.includes("stop_module")) toastType = "error";
             if (url.includes("restart_module")) toastType = "warning";
-  
+    
             showToast(body.message, toastType);
-  
+    
             if (url.includes("start_module")) activeModules.push(moduleName);
             if (url.includes("stop_module")) activeModules = activeModules.filter(m => m !== moduleName);
-  
+    
             updateModuleStatuses();
             updateCounters();
           } else {
-            showToast(body.message, "error");
+            showToast(body.message || "Nieznany błąd!", "error");
           }
         })
-        .catch(() => showToast("Błąd połączenia z serwerem!", "error"))
+        .catch(error => {
+          console.error("Błąd:", error);
+          if (error.message !== "403 Forbidden") {
+            showToast("Błąd połączenia z serwerem!", "error");
+          }
+        })
         .finally(() => {
           if (button) button.disabled = false;
         });

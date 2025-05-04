@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>👥 Użytkownicy</h2>
+    <a href="{{ url_for('create_user') }}" class="btn btn-success mb-3">➕ Dodaj użytkownika</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nazwa</th>
+                <th>Rola</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.role }}</td>
+                <td>
+                    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-warning btn-sm">✏️ Edytuj</a>
+                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" style="display:inline;">
+                        <button class="btn btn-danger btn-sm" onclick="return confirm('Na pewno usunąć użytkownika?')">🗑️ Usuń</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

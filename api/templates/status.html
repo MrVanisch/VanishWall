@@ -1,197 +1,148 @@
-<html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ACL Manager</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">ACL Manager</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    {% if current_user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="/">Reguły</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/logs">Logi</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/status">Status</a></li> <!-- Dodana zakładka Status -->
-                        <li class="nav-item"><a class="nav-link" href="/change_password">Zmień hasło</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/logout">Wyloguj</a></li>
-                    {% else %}
-                        <li class="nav-item"><a class="nav-link" href="/login">Zaloguj</a></li>
-                    {% endif %}
-                </ul>
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
+{% block content %}
+<div class="container mt-4">
+  <h1>Status Ruchu Sieciowego</h1>
+  <p>Wizualizacja aktualnego ruchu sieciowego.</p>
 
-  <div class="container mt-4">
-    <h1>Status Ruchu Sieciowego</h1>
-    <p>Wizualizacja aktualnego ruchu sieciowego.</p>
-
-    <div class="btn-group mb-3" role="group">
-      <button class="btn btn-outline-light" onclick="fetchTrafficData(5)">5 min</button>
-      <button class="btn btn-outline-light" onclick="fetchTrafficData(60)">1 godzina</button>
-      <button class="btn btn-outline-light" onclick="fetchTrafficData(1440)">24 godziny</button>
-      <button class="btn btn-outline-secondary" onclick="trafficChart.resetZoom(); sentReceivedChart.resetZoom();">Resetuj Zoom</button>
-    </div>
-
-    <h4>Protokoły (TCP / UDP / ICMP / Wszystko)</h4>
-    <canvas id="trafficChart" class="mb-5"></canvas>
-
-    <h4>Wysłane vs Odebrane pakiety</h4>
-    <canvas id="sentReceivedChart" class="mb-5"></canvas>
+  <div class="btn-group mb-3" role="group">
+    <button class="btn btn-outline-light" onclick="fetchTrafficData(5)">5 min</button>
+    <button class="btn btn-outline-light" onclick="fetchTrafficData(60)">1 godzina</button>
+    <button class="btn btn-outline-light" onclick="fetchTrafficData(1440)">24 godziny</button>
+    <button class="btn btn-outline-secondary" onclick="trafficChart.resetZoom(); sentReceivedChart.resetZoom();">Resetuj Zoom</button>
   </div>
 
-  <footer class="footer">
-    &copy; 2025 ACL Manager - Projekt inżynierski
-  </footer>
+  <h4>Protokoły (TCP / UDP / ICMP / Wszystko)</h4>
+  <canvas id="trafficChart" class="mb-5"></canvas>
 
-  <!-- Biblioteki -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <h4>Wysłane vs Odebrane pakiety</h4>
+  <canvas id="sentReceivedChart" class="mb-5"></canvas>
+</div>
 
-  <script>
-    const { Chart } = window;
-    const ZoomPlugin = window.ChartZoom;
-    Chart.register(ZoomPlugin);
+<!-- Skrypty -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-    let currentRange = null;
+<script>
+  const { Chart } = window;
+  const ZoomPlugin = window.ChartZoom;
+  Chart.register(ZoomPlugin);
 
-    function fixCanvasResolution(canvas) {
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(dpr, dpr);
-      return ctx;
-    }
+  let currentRange = null;
 
-    const trafficChart = new Chart(fixCanvasResolution(document.getElementById('trafficChart')), {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [
-          { label: 'TCP Pakiety', borderColor: 'rgb(75, 192, 192)', data: [], fill: false, pointRadius: 0 },
-          { label: 'UDP Pakiety', borderColor: 'rgb(255, 99, 132)', data: [], fill: false, pointRadius: 0 },
-          { label: 'ICMP Pakiety', borderColor: 'rgb(153, 102, 255)', data: [], fill: false, pointRadius: 0 },
-          { label: 'Wszystkie Pakiety', borderColor: 'rgb(255, 159, 64)', data: [], fill: false, pointRadius: 0 }
-        ]
-      },
-      options: getChartOptions()
-    });
+  function fixCanvasResolution(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return ctx;
+  }
 
-    const sentReceivedChart = new Chart(fixCanvasResolution(document.getElementById('sentReceivedChart')), {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [
-          { label: 'Wysłane pakiety', borderColor: 'rgb(54, 162, 235)', data: [], fill: false, pointRadius: 0 },
-          { label: 'Odebrane pakiety', borderColor: 'rgb(255, 206, 86)', data: [], fill: false, pointRadius: 0 }
-        ]
-      },
-      options: getChartOptions()
-    });
+  const trafficChart = new Chart(fixCanvasResolution(document.getElementById('trafficChart')), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'TCP Pakiety', borderColor: 'rgb(75, 192, 192)', data: [], fill: false, pointRadius: 0 },
+        { label: 'UDP Pakiety', borderColor: 'rgb(255, 99, 132)', data: [], fill: false, pointRadius: 0 },
+        { label: 'ICMP Pakiety', borderColor: 'rgb(153, 102, 255)', data: [], fill: false, pointRadius: 0 },
+        { label: 'Wszystkie Pakiety', borderColor: 'rgb(255, 159, 64)', data: [], fill: false, pointRadius: 0 }
+      ]
+    },
+    options: getChartOptions()
+  });
 
-    function fetchTrafficData(range = null) {
-      currentRange = range;
-      let url = '/api/status';
-      if (currentRange !== null) url += `?range=${currentRange}`;
+  const sentReceivedChart = new Chart(fixCanvasResolution(document.getElementById('sentReceivedChart')), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'Wysłane pakiety', borderColor: 'rgb(54, 162, 235)', data: [], fill: false, pointRadius: 0 },
+        { label: 'Odebrane pakiety', borderColor: 'rgb(255, 206, 86)', data: [], fill: false, pointRadius: 0 }
+      ]
+    },
+    options: getChartOptions()
+  });
 
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          if (data.labels && data.labels.length > 0) {
-            const formattedLabels = data.labels.map(label => {
-              const d = new Date(label);
-              return d.toLocaleString('pl-PL', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-              });
+  function fetchTrafficData(range = null) {
+    currentRange = range;
+    let url = '/api/status';
+    if (currentRange !== null) url += `?range=${currentRange}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (data.labels && data.labels.length > 0) {
+          const formattedLabels = data.labels.map(label => {
+            const d = new Date(label);
+            return d.toLocaleString('pl-PL', {
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
             });
+          });
 
-            trafficChart.data.labels = formattedLabels;
-            trafficChart.data.datasets[0].data = data.tcp_data;
-            trafficChart.data.datasets[1].data = data.udp_data;
-            trafficChart.data.datasets[2].data = data.icmp_data;
-            trafficChart.data.datasets[3].data = data.all_data;
-            trafficChart.update();
+          trafficChart.data.labels = formattedLabels;
+          trafficChart.data.datasets[0].data = data.tcp_data;
+          trafficChart.data.datasets[1].data = data.udp_data;
+          trafficChart.data.datasets[2].data = data.icmp_data;
+          trafficChart.data.datasets[3].data = data.all_data;
+          trafficChart.update();
 
-            sentReceivedChart.data.labels = formattedLabels;
-            sentReceivedChart.data.datasets[0].data = data.sent_data;
-            sentReceivedChart.data.datasets[1].data = data.received_data;
-            sentReceivedChart.update();
-          }
-        })
-        .catch(err => console.error('❌ Błąd przy pobieraniu danych:', err));
-    }
+          sentReceivedChart.data.labels = formattedLabels;
+          sentReceivedChart.data.datasets[0].data = data.sent_data;
+          sentReceivedChart.data.datasets[1].data = data.received_data;
+          sentReceivedChart.update();
+        }
+      })
+      .catch(err => console.error('❌ Błąd przy pobieraniu danych:', err));
+  }
 
-    function getChartOptions() {
-      return {
-        responsive: true,
-        interaction: {
-          mode: 'nearest',
-          axis: 'x',
-          intersect: false
-        },
-        layout: {
-          padding: {
-            bottom: 20
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: '#ffffff',
-              font: {
-                size: 14,
-                weight: '600'
-              },
-              maxRotation: 0,
-              minRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: 10
-            }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: '#e0e0e0'
-            }
+  function getChartOptions() {
+    return {
+      responsive: true,
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      },
+      layout: {
+        padding: { bottom: 20 }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#ffffff',
+            font: { size: 14, weight: '600' },
+            maxRotation: 0,
+            minRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 10
           }
         },
-        plugins: {
-          legend: {
-            labels: {
-              color: '#e0e0e0'
-            }
-          },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#e0e0e0' }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#e0e0e0' }
+        },
+        zoom: {
+          pan: { enabled: true, mode: 'x' },
           zoom: {
-            pan: {
-              enabled: true,
-              mode: 'x'
-            },
-            zoom: {
-              wheel: { enabled: true },
-              pinch: { enabled: true },
-              drag: { enabled: true },
-              mode: 'x'
-            }
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            drag: { enabled: true },
+            mode: 'x'
           }
         }
-      };
-    }
+      }
+    };
+  }
 
-    // Automatyczne odświeżanie co 5 sekund
-    setInterval(() => fetchTrafficData(currentRange), 5000);
-    fetchTrafficData(5); // Domyślna opcja
-  </script>
-</body>
-
-</html>
+  setInterval(() => fetchTrafficData(currentRange), 5000);
+  fetchTrafficData(5);
+</script>
+{% endblock %}

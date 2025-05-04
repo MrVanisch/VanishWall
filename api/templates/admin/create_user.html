@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>➕ Nowy użytkownik</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            <label>Nazwa użytkownika</label>
+            {{ form.username(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            <label>Hasło</label>
+            {{ form.password(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            <label>Rola</label>
+            {{ form.role(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-success">Utwórz</button>
+    </form>
+</div>
+{% endblock %}

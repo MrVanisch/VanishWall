@@ -18,9 +18,16 @@
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item"><a class="nav-link" href="/">Reguły</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/logs">Logi</a></li>
                         <li class="nav-item"><a class="nav-link" href="/status">Status</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/change_password">Zmień hasło</a></li>
+
+                        {% if current_user.role in ['admin', 'moderator'] %}
+                            <li class="nav-item"><a class="nav-link" href="/logs">Logi</a></li>
+                        {% endif %}
+
+                        {% if current_user.role == 'admin' %}
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('user_list') }}">Użytkownicy</a></li>
+                        {% endif %}
+
                         <li class="nav-item"><a class="nav-link" href="/logout">Wyloguj</a></li>
                     {% else %}
                         <li class="nav-item"><a class="nav-link" href="/login">Zaloguj</a></li>

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>✏️ Edytuj użytkownika: {{ user.username }}</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            <label>Nowe hasło (jeśli chcesz zmienić)</label>
+            {{ form.password(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            <label>Rola</label>
+            {{ form.role(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        <a href="{{ url_for('user_list') }}" class="btn btn-secondary">↩️ Powrót</a>
+    </form>
+</div>
+{% endblock %}

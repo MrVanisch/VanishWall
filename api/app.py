@@ -12,6 +12,10 @@ from flask_bcrypt import Bcrypt
 from config import CONFIG
 from modules.logger import system_logger
 from datetime import datetime, timedelta
+from flask import abort
+from wtforms import SelectField  # dodaj do importów jeśli jeszcze nie ma
+from functools import wraps
+from flask import send_file
 
 # Ustawienie katalogu głównego projektu
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -67,6 +71,97 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     must_change_password = db.Column(db.Boolean, default=True)
+    role = db.Column(db.String(50), default='user')  # <--- NEW
+
+class CreateUserForm(FlaskForm):
+    username = StringField("Username", validators=[DataRequired(), Length(min=3, max=20)])
+    password = PasswordField("Password", validators=[DataRequired(), Length(min=6)])
+    role = SelectField(
+        "Role",
+        choices=[("user", "User"), ("admin", "Administrator"), ("moderator", "Moderator")],
+        default="user"
+    )
+    submit = SubmitField("Create User")
+
+class EditUserForm(FlaskForm):
+    password = PasswordField("New Password", validators=[Length(min=6)])
+    role = SelectField(
+        "Role",
+        choices=[("user", "User"), ("admin", "Administrator"), ("moderator", "Moderator")],
+        default="user"
+    )
+    submit = SubmitField("Save Changes")
+
+#role 
+
+def role_required(*roles):
+    def wrapper(fn):
+        @wraps(fn)
+        def decorated_view(*args, **kwargs):
+            if not current_user.is_authenticated or current_user.role not in roles:
+                # Obsługa AJAX/fetch – zwracamy JSON
+                if request.accept_mimetypes.accept_json:
+                    return jsonify({"status": "error", "message": "You do not have permission to perform this action."}), 403
+                # Dla zwykłej przeglądarki – klasyczne 403
+                return abort(403)
+            return fn(*args, **kwargs)
+        return decorated_view
+    return wrapper
+
+
+@app.route("/admin/users")
+@login_required
+def user_list():
+    if current_user.role != 'admin':
+        return abort(403)
+    users = User.query.all()
+    return render_template("admin/user_list.html", users=users)
+
+@app.route("/admin/users/create", methods=["GET", "POST"])
+@login_required
+def create_user():
+    if current_user.role != 'admin':
+        return abort(403)
+    form = CreateUserForm()
+    if form.validate_on_submit():
+        hashed_pw = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+        new_user = User(username=form.username.data, password=hashed_pw, role=form.role.data)
+        db.session.add(new_user)
+        db.session.commit()
+        flash("✅ Użytkownik utworzony!", "success")
+        return redirect(url_for("user_list"))
+    return render_template("admin/create_user.html", form=form)
+
+@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_user(user_id):
+    if current_user.role != 'admin':
+        return abort(403)
+    user = User.query.get_or_404(user_id)
+    form = EditUserForm(obj=user)
+    if form.validate_on_submit():
+        if form.password.data:
+            user.password = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+        user.role = form.role.data
+        db.session.commit()
+        flash("✅ Zmieniono dane użytkownika!", "success")
+        return redirect(url_for("user_list"))
+    return render_template("admin/edit_user.html", form=form, user=user)
+
+@app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+def delete_user(user_id):
+    if current_user.role != 'admin':
+        return abort(403)
+    user = User.query.get_or_404(user_id)
+    if user.username == "admin":
+        flash("❌ Nie można usunąć konta admina!", "danger")
+        return redirect(url_for("user_list"))
+    db.session.delete(user)
+    db.session.commit()
+    flash("🗑️ Użytkownik usunięty", "info")
+    return redirect(url_for("user_list"))
+
 
 class NetworkTraffic(db.Model):
     __bind_key__ = "chart"
@@ -101,7 +196,12 @@ def create_default_admin():
         db.create_all()
         if not User.query.filter_by(username="admin").first():
             hashed_password = bcrypt.generate_password_hash("admin123").decode("utf-8")
-            admin_user = User(username="admin", password=hashed_password, must_change_password=True)
+            admin_user = User(
+                username="admin",
+                password=hashed_password,
+                must_change_password=True,
+                role="admin"  # <- TO USTAWIA UPRAWNIENIA
+            )
             db.session.add(admin_user)
             db.session.commit()
             print("✅ Utworzono domyślnego użytkownika: admin / admin123")
@@ -112,36 +212,50 @@ def index():
     return render_template("index.html", available_modules=AVAILABLE_MODULES.keys())
 
 @app.route("/start_module", methods=["POST"])
-@login_required
+@role_required("admin", "moderator")
 def start_module():
     module_name = request.json.get("name")
     if module_name in AVAILABLE_MODULES and AVAILABLE_MODULES[module_name]["start"]:
         if module_name in running_threads:
             return jsonify({"status": "error", "message": "Moduł już działa!"}), 400
-        system_logger.info(f"Uruchamiam moduł: {module_name}")
+        
+        # LOGOWANIE MODERATORA
+        if current_user.role == "moderator":
+            system_logger.warning(f"[MODERATOR] {current_user.username} started module: {module_name}")
+        else:
+            system_logger.info(f"[ADMIN] {current_user.username} started module: {module_name}")
+
         t = threading.Thread(target=AVAILABLE_MODULES[module_name]["start"], daemon=True)
         running_threads[module_name] = t
         t.start()
         return jsonify({"status": "success", "message": f"Uruchomiono {module_name}"})
     return jsonify({"status": "error", "message": "Nieznany moduł lub brak funkcji start!"}), 400
 
+
 @app.route("/stop_module", methods=["POST"])
-@login_required
+@role_required("admin", "moderator")
 def stop_module():
     module_name = request.json.get("name")
     if module_name in AVAILABLE_MODULES and AVAILABLE_MODULES[module_name]["stop"]:
-        system_logger.info(f"Zatrzymuję moduł: {module_name}")
+        if current_user.role == "moderator":
+            system_logger.warning(f"[MODERATOR] {current_user.username} stopped module: {module_name}")
+        else:
+            system_logger.info(f"[ADMIN] {current_user.username} stopped module: {module_name}")
         AVAILABLE_MODULES[module_name]["stop"]()
         running_threads.pop(module_name, None)
         return jsonify({"status": "success", "message": f"Zatrzymano {module_name}!"})
     return jsonify({"status": "error", "message": "Moduł nie działa lub brak funkcji stop!"}), 400
 
+
 @app.route("/restart_module", methods=["POST"])
-@login_required
+@role_required("admin", "moderator")
 def restart_module():
     module_name = request.json.get("name")
     if module_name in AVAILABLE_MODULES and AVAILABLE_MODULES[module_name]["restart"]:
-        system_logger.info(f"Restartuję moduł: {module_name}")
+        if current_user.role == "moderator":
+            system_logger.warning(f"[MODERATOR] {current_user.username} restarted module: {module_name}")
+        else:
+            system_logger.info(f"[ADMIN] {current_user.username} restarted module: {module_name}")
         AVAILABLE_MODULES[module_name]["restart"]()
         return jsonify({"status": "success", "message": f"Restart modułu {module_name} zakończony!"})
     return jsonify({"status": "error", "message": "Nieznany moduł lub brak funkcji restart!"}), 400
@@ -242,6 +356,7 @@ LOG_FILES = {
 
 
 @app.route("/api/logs/<log_type>")
+@role_required("admin", "moderator")
 @login_required
 def get_log_content(log_type):
     path = LOG_FILES.get(log_type)
@@ -253,6 +368,7 @@ def get_log_content(log_type):
     return jsonify(lines)
 
 @app.route("/download/log/<log_type>")
+@role_required("admin", "moderator")
 @login_required
 def download_log_file(log_type):
     path = LOG_FILES.get(log_type)
@@ -261,6 +377,7 @@ def download_log_file(log_type):
     return send_file(path, as_attachment=True)
 
 @app.route("/logs")
+@role_required("admin", "moderator")
 @login_required
 def logs():
     return render_template("logs.html")
