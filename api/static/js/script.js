@@ -162,4 +162,91 @@ document.addEventListener("DOMContentLoaded", () => {
     updateSystemStatus();
     setInterval(updateSystemStatus, 5000);
   });
+
+
   
+// Lista modułów z ustawieniami
+const configurableModules = [
+  'bandwidth_limiter',
+  'syn_flood',
+  'udp_flood',
+  'dns_ampl',
+  'ntp_ampl',
+  'bypass_protection',
+  'traffic_monitor',
+  'AI.ai_traffic_monitor'
+];
+
+// Otwieranie dynamicznego modala
+function openSettingsModal(module) {
+  fetch(`/get_${module}_settings`)
+    .then(res => res.json())
+    .then(data => {
+      const modal = document.getElementById("dynamicModal");
+      const form = document.getElementById("dynamicForm");
+      const title = document.getElementById("modal-title");
+
+      // Debug
+      console.log("🔧 Odpowiedź z backendu:", data);
+
+      title.textContent = data.title || `Ustawienia: ${module}`;
+      form.innerHTML = "";  // Wyczyść poprzednie pola
+
+      const fields = Array.isArray(data.fields) ? data.fields : [];
+
+      fields.forEach(field => {
+        const label = document.createElement("label");
+        label.setAttribute("for", field.id);
+        label.textContent = field.label;
+
+        const input = document.createElement("input");
+        input.type = field.type || "text";
+        input.id = field.id;
+        input.name = field.id;
+        input.className = "form-control mb-2";
+        input.value = field.value ?? "";  // Obsługa null/undefined
+
+        form.appendChild(label);
+        form.appendChild(input);
+      });
+
+      // ✅ Zawsze dodaj przycisk ZAPISZ (nawet jeśli brak pól)
+      const submitBtn = document.createElement("button");
+      submitBtn.type = "submit";
+      submitBtn.className = "btn btn-primary mt-2";
+      submitBtn.textContent = "ZAPISZ";
+      form.appendChild(submitBtn);
+
+      // Obsługa zapisu formularza
+      form.onsubmit = function (e) {
+        e.preventDefault();
+        const payload = {};
+        fields.forEach(field => {
+          payload[field.id] = document.getElementById(field.id)?.value ?? "";
+        });
+
+        fetch(`/update_${module}_settings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+          .then(res => res.json())
+          .then(resp => {
+            showToast("Zapisano ustawienia", "success");
+            modal.style.display = "none";
+          })
+          .catch(() => showToast("Błąd zapisu ustawień!", "error"));
+      };
+
+      modal.style.display = "block";
+    })
+    .catch(err => {
+      console.error("❌ Błąd danych z backendu:", err);
+      alert("❌ Nie udało się pobrać ustawień dla: " + module);
+    });
+}
+
+function closeDynamicModal() {
+  document.getElementById("dynamicModal").style.display = "none";
+}
+

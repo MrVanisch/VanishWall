@@ -1,94 +1,125 @@
 from scapy.all import sniff, IP
 import time
 import threading
+import importlib
+import config
 from modules.acl import ACLManager
-from modules.logger import system_logger  # Używamy poprawnego loggera
+from modules.logger import (
+    system_logger, security_logger, traffic_logger,
+    log_attack_detected, log_blocked_ip
+)
 
-# Tworzymy instancję ACLManager
-acl = ACLManager(block_time=10)
+# ACL do blokowania IP
+acl = ACLManager(block_time=60)
 
-# Limit ruchu
-BANDWIDTH_LIMIT = 50 * 1024 * 1024  # 50 MB w bajtach
-CHECK_INTERVAL = 10 # Sprawdzanie co 10 sekund
-
-# Monitorowanie ruchu
+# Stan działania
 traffic = {}
 monitoring_active = False
 sniffer = None
 monitor_thread = None
 
+def get_dynamic_config():
+    try:
+        importlib.reload(config)
+        return config.CONFIG.get("BANDWIDTH_LIMIT", 50 * 1024 * 1024), config.CONFIG.get("CHECK_INTERVAL", 10)
+    except Exception as e:
+        system_logger.error(f"Błąd ładowania config.py: {e}")
+        return 50 * 1024 * 1024, 10
+
 def analyze_packet(packet):
-    """Analizuje pakiety i zlicza bajty przesłane przez IP"""
+    """Zlicza bajty przesyłane przez IP źródłowe"""
     if not monitoring_active:
         return
-    
-    if packet.haslayer(IP):
-        ip_src = packet[IP].src
-        packet_size = len(packet)
-        traffic[ip_src] = traffic.get(ip_src, 0) + packet_size
-
+    try:
+        if packet.haslayer(IP):
+            ip_src = packet[IP].src
+            packet_size = len(packet)
+            traffic[ip_src] = traffic.get(ip_src, 0) + packet_size
+    except Exception as e:
+        system_logger.error(f"Błąd podczas analizy pakietu: {e}")
 
 def monitor_traffic():
-    """Sprawdza ruch co określony czas i blokuje IP, jeśli przekroczy limit"""
+    """Analiza ilości przesłanych danych"""
     global monitoring_active
     while monitoring_active:
-        time.sleep(CHECK_INTERVAL)
-        
+        bandwidth_limit, check_interval = get_dynamic_config()
+        time.sleep(check_interval)
+
         for ip, bytes_sent in list(traffic.items()):
-            if bytes_sent > BANDWIDTH_LIMIT and not acl.is_blocked(ip):
-                print(f"\U0001F6D1 WYKRYTO ATAK: {ip} - {bytes_sent / (1024 * 1024):.2f} MB / {CHECK_INTERVAL} s")
-                system_logger.warning(f"WYKRYTO ATAK: {ip} - {bytes_sent / (1024 * 1024):.2f} MB / {CHECK_INTERVAL} s")
+            mb = bytes_sent / (1024 * 1024)
+            traffic_logger.info(f"{ip} przesłał {mb:.2f} MB w ciągu {check_interval} s")
+
+            if bytes_sent > bandwidth_limit and not acl.is_blocked(ip):
+                msg = f"WYKRYTO ATAK: {ip} - {mb:.2f} MB / {check_interval} s"
+                print(f"🚨 {msg}")
+                system_logger.warning(msg)
+
+                log_attack_detected("Bandwidth Flood", ip, f"{mb:.2f} MB w {check_interval}s")
+                log_blocked_ip(ip)
+
                 acl.block_ip(ip, reason="Zbyt duże zużycie pasma")
-        
+
         traffic.clear()
 
-
 def start_bandwidth_limiter():
-    """Uruchamia monitorowanie ruchu i ograniczanie przepustowości"""
+    """Uruchamia analizę przepustowości"""
     global monitoring_active, sniffer, monitor_thread
-    
+
     if monitoring_active:
-        print("⚠️ Monitorowanie już działa!")
+        print("⚠️ Monitorowanie już trwa.")
         return
-    
-    print("🛡️ Bandwidth limiter uruchomiony...")
-    system_logger.info("Monitorowanie ruchu zostało uruchomione.")
+
+    print("🛡️ Bandwidth limiter startuje...")
+    system_logger.info("Bandwidth limiter został uruchomiony.")
     monitoring_active = True
-    
+
     monitor_thread = threading.Thread(target=monitor_traffic, daemon=True)
     monitor_thread.start()
-    
-    sniffer = sniff(filter="ip", prn=analyze_packet, store=False, stop_filter=lambda x: not monitoring_active)
 
+    try:
+        sniffer = sniff(
+            filter="ip",
+            prn=analyze_packet,
+            store=False,
+            stop_filter=lambda _: not monitoring_active
+        )
+    except Exception as e:
+        system_logger.error(f"Błąd sniffowania: {e}")
+        stop_bandwidth_limiter()
 
 def stop_bandwidth_limiter():
-    """Zatrzymuje monitorowanie ruchu"""
+    """Zatrzymuje monitorowanie"""
     global monitoring_active, sniffer, monitor_thread
-    
+
     if not monitoring_active:
-        print("⚠️ bandwidth_limiter zostało zatrzymane")
+        print("⚠️ Monitorowanie już wyłączone.")
         return
-    
-    print("🛑 bandwidth_limiter zostało zatrzymane.")
-    system_logger.info("Monitorowanie ruchu zostało zatrzymane.")
+
+    print("🛑 Zatrzymywanie bandwidth limiter...")
+    system_logger.info("Zatrzymano bandwidth limiter.")
     monitoring_active = False
-    
+
     if monitor_thread and monitor_thread.is_alive():
         monitor_thread.join(timeout=2)
-    
+
     sniffer = None
     monitor_thread = None
-    print("✅ bandwidth_limiter zostało zatrzymane.")
-
+    print("✅ Bandwidth limiter zatrzymany.")
 
 def restart_bandwidth_limiter():
-    """Restartuje monitorowanie ruchu"""
-    print("🔄 Restartowanie monitorowania ruchu...")
+    """Restartuje cały system"""
+    print("🔄 Restartowanie bandwidth limiter...")
     stop_bandwidth_limiter()
     time.sleep(1)
     start_bandwidth_limiter()
-    print("✅ Restart monitorowania ruchu zakończony.")
-
+    print("✅ Restart zakończony.")
 
 if __name__ == "__main__":
-    start_bandwidth_limiter()
+    try:
+        start_bandwidth_limiter()
+    except KeyboardInterrupt:
+        print("\n⛔ Przerwano przez użytkownika.")
+        stop_bandwidth_limiter()
+    except Exception as e:
+        system_logger.error(f"Nieoczekiwany błąd główny: {e}")
+        stop_bandwidth_limiter()

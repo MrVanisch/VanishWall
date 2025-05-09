@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Główna zawartość -->
 <div class="container main-container">
-  
   <!-- Nagłówek -->
   <div class="row mb-4">
     <div class="col">
@@ -12,14 +10,12 @@
     </div>
   </div>
 
-  <!-- Karty z informacjami -->
+  <!-- Karty informacyjne -->
   <div class="row mb-4">
     <div class="col-md-4">
       <div class="card info-card">
         <div class="card-body info-card-body">
-          <div class="info-icon module-icon">
-            <i class="fas fa-cubes"></i>
-          </div>
+          <div class="info-icon module-icon"><i class="fas fa-cubes"></i></div>
           <div class="info-content">
             <h4 id="total-modules">{{ available_modules|length }}</h4>
             <p>Wszystkie moduły</p>
@@ -30,9 +26,7 @@
     <div class="col-md-4">
       <div class="card info-card">
         <div class="card-body info-card-body">
-          <div class="info-icon active-icon">
-            <i class="fas fa-play-circle"></i>
-          </div>
+          <div class="info-icon active-icon"><i class="fas fa-play-circle"></i></div>
           <div class="info-content">
             <h4 id="active-modules-count">0</h4>
             <p>Aktywne moduły</p>
@@ -65,12 +59,12 @@
         <div class="card-body">
           <div id="modules-list">
             {% if available_modules %}
-              {% for module in available_modules %}
+              {% for module in available_modules if module != "network_traffic" %}
                 <div class="module-item" data-module="{{ module }}">
                   <div class="module-info">
                     <div class="module-name">
                       <i class="fas fa-puzzle-piece"></i>
-                      {{ module.replace("_", " ").title() }}
+                      {{ module.replace('_', ' ').replace('.', ' ').title() }}
                     </div>
                     <span class="module-status status-inactive" id="status-{{ module }}">Nieaktywny</span>
                   </div>
@@ -81,6 +75,16 @@
                     <button class="btn btn-danger btn-sm stop-module" data-module="{{ module }}">
                       <i class="fas fa-stop"></i> Stop
                     </button>
+                    {% if module in [
+                      'traffic_monitor', 'bandwidth_limiter', 'syn_flood', 'udp_flood',
+                      'dns_ampl', 'ntp_ampl', 'bypass_protection', 'AI.ai_traffic_monitor'
+                    ] %}
+                      <button class="btn btn-secondary btn-sm"
+                              onclick="openSettingsModal('{{ module }}')"
+                              title="Ustawienia">
+                        ⚙️
+                      </button>
+                    {% endif %}
                   </div>
                 </div>
               {% endfor %}
@@ -97,20 +101,15 @@
     <!-- Status systemu -->
     <div class="col-lg-4">
       <div class="card status-card">
-        <div class="card-header">
-          <i class="fas fa-signal"></i> Status systemu
-        </div>
+        <div class="card-header"><i class="fas fa-signal"></i> Status systemu</div>
         <div class="card-body">
           <button class="btn btn-info w-100 mb-3" id="status-acl">
             <i class="fas fa-sync-alt"></i> Odśwież status modułów
           </button>
-          
           <div id="acl-status">
             <span class="text-muted"><i class="fas fa-info-circle"></i> Kliknij przycisk, aby sprawdzić status</span>
           </div>
-          
           <hr>
-          
           <div class="system-info mt-3">
             <div class="d-flex justify-content-between mb-2">
               <span><i class="fas fa-server"></i> Serwer:</span>
@@ -119,15 +118,13 @@
             <div class="d-flex justify-content-between mb-2">
               <span><i class="fas fa-memory"></i> Pamięć:</span>
               <div class="progress" style="width: 60%; height: 20px;">
-                <div class="progress-bar bg-info" role="progressbar"
-                     style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">...</div>
+                <div class="progress-bar bg-info" role="progressbar" style="width: 0%;" aria-valuenow="0">...</div>
               </div>
             </div>
             <div class="d-flex justify-content-between">
               <span><i class="fas fa-microchip"></i> CPU:</span>
               <div class="progress" style="width: 60%; height: 20px;">
-                <div class="progress-bar bg-warning" role="progressbar"
-                     style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">...</div>
+                <div class="progress-bar bg-warning" role="progressbar" style="width: 0%;" aria-valuenow="0">...</div>
               </div>
             </div>
           </div>
@@ -135,10 +132,17 @@
       </div>
     </div>
   </div>
+
+  <!-- Uniwersalny modal do dynamicznych ustawień -->
+  <div id="dynamicModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close" onclick="closeDynamicModal()">&times;</span>
+      <h5 id="modal-title">Ustawienia modułu</h5>
+      <form id="dynamicForm"></form>
+    </div>
+  </div>
+
+  <!-- Toasty -->
+  <div id="toast-container"></div>
 </div>
-
-<!-- Toasty -->
-<div id="toast-container"></div>
-
-
 {% endblock %}

@@ -18,8 +18,12 @@ formatter = logging.Formatter("%(asctime)s - %(message)s")
 file_handler.setFormatter(formatter)
 traffic_logger.addHandler(file_handler)
 
-# Konfiguracja monitoringu
-CHECK_INTERVAL = 10  # Sprawdzanie ruchu co 10 sekund
+from config import CONFIG
+
+def get_traffic_config():
+    import importlib
+    importlib.reload(CONFIG)
+    return CONFIG.get("CHECK_INTERVAL_TRAFFIC", 10)
 
 # Słowniki do przechowywania ruchu
 packet_count = 0  # Liczba pakietów w danym okresie
@@ -52,7 +56,8 @@ def log_traffic_stats():
     global packet_count, traffic_data, monitoring_active
 
     while monitoring_active:
-        time.sleep(CHECK_INTERVAL)
+        interval = get_traffic_config()
+        time.sleep(interval)
 
         if not monitoring_active:
             break  # Jeśli wyłączone, przerywamy pętlę

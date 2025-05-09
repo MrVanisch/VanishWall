@@ -4,54 +4,58 @@ import logging
 import threading
 import queue
 from modules.acl import ACLManager
+from modules.logger import system_logger, security_logger, debug_logger
+import importlib
+import config
 
-# Pobieramy logger systemowy z `main.py`
-system_logger = logging.getLogger("system")
+# 🔁 Funkcja do pobierania dynamicznych wartości z CONFIG
+def get_dns_config():
+    importlib.reload(config)
+    return (
+        config.CONFIG.get("DNS_RESPONSE_LIMIT", 100),
+        config.CONFIG.get("DNS_SIZE_THRESHOLD", 500),
+        config.CONFIG.get("CHECK_INTERVAL_DNS", 10)
+    )
 
-# Tworzymy instancję ACLManager
+# Inicjalizacja
 acl = ACLManager(block_time=10)
-
-# Limit dużych odpowiedzi DNS na sekundę
-DNS_RESPONSE_LIMIT = 100  
-CHECK_INTERVAL = 10  # Sprawdzamy ruch co 10 sekund
-DNS_SIZE_THRESHOLD = 500  # Jeśli odpowiedź DNS ma > 500 bajtów, traktujemy jako podejrzaną
-
-# Kolejka do przetwarzania pakietów w czasie rzeczywistym
 packet_queue = queue.Queue()
-
-# Słownik do monitorowania ilości dużych odpowiedzi DNS od danego IP
 dns_counters = {}
-
-# Flaga kontrolna do zatrzymywania wątków
 stop_event = threading.Event()
 
 def process_dns_packets():
     """Przetwarza pakiety DNS z kolejki i aktualizuje liczniki IP"""
     while not stop_event.is_set():
         try:
+            _, size_threshold, _ = get_dns_config()
             packet = packet_queue.get(timeout=1)
             if packet.haslayer(IP) and packet.haslayer(UDP) and packet.haslayer(DNS):
-                if packet[UDP].sport == 53 and len(packet) > DNS_SIZE_THRESHOLD:
+                if packet[UDP].sport == 53 and len(packet) > size_threshold:
                     ip_src = packet[IP].src
                     dns_counters[ip_src] = dns_counters.get(ip_src, 0) + 1
+                    debug_logger.debug(f"📦 Duża odpowiedź DNS od {ip_src} (rozmiar: {len(packet)} B)")
             packet_queue.task_done()
         except queue.Empty:
             continue
         except Exception as e:
-            system_logger.error(f"❌ Błąd w process_dns_packets: {e}")
+            system_logger.error("❌ Błąd w process_dns_packets", exc_info=True)
 
 def monitor_dns_traffic():
     """Sprawdza liczbę dużych odpowiedzi DNS i blokuje IP, jeśli przekroczy limit"""
     while not stop_event.is_set():
-        time.sleep(CHECK_INTERVAL)
+        response_limit, _, check_interval = get_dns_config()
+        time.sleep(check_interval)
 
         for ip, dns_count in list(dns_counters.items()):
-            if dns_count > DNS_RESPONSE_LIMIT and not acl.is_blocked(ip):
-                print(f"🛑 DNS Amplification: Podejrzane IP {ip} - {dns_count} dużych pakietów DNS w {CHECK_INTERVAL} sekund")
-                system_logger.warning(f"DNS Amplification: Podejrzane IP {ip} - {dns_count} dużych pakietów DNS w {CHECK_INTERVAL} sekund")
+            if dns_count > response_limit and not acl.is_blocked(ip):
+                msg = f"🛑 DNS Amplification: IP {ip} - {dns_count} dużych pakietów w {check_interval}s"
+                print(msg)
+                system_logger.warning(msg)
+                security_logger.warning(f"🚨 Wykryto atak DNS Amplification z IP: {ip}")
                 acl.block_ip(ip, reason="DNS Amplification Attack")
+                debug_logger.debug(f"🔒 Zablokowano IP {ip}")
 
-        # Resetowanie licznika odpowiedzi DNS
+        debug_logger.debug("🔄 Resetowanie liczników DNS")
         dns_counters.clear()
 
 def analyze_dns_packet(packet):
@@ -60,17 +64,23 @@ def analyze_dns_packet(packet):
         packet_queue.put(packet)
 
 def start_dns_ampl():
-    """Uruchamia wykrywanie ataków DNS Amplification"""
+    """Uruchamia ochronę DNS Amplification"""
     print("🛡️ Ochrona przed DNS Amplification uruchomiona...")
+    system_logger.info("🛡️ Ochrona przed DNS Amplification uruchomiona")
     stop_event.clear()
 
     threading.Thread(target=process_dns_packets, daemon=True).start()
     threading.Thread(target=monitor_dns_traffic, daemon=True).start()
 
-    sniff(filter="udp port 53", prn=analyze_dns_packet, store=False, stop_filter=lambda _: stop_event.is_set())
+    try:
+        sniff(filter="udp port 53", prn=analyze_dns_packet, store=False, stop_filter=lambda _: stop_event.is_set())
+    except Exception as e:
+        system_logger.error("❌ Błąd działania sniffera DNS", exc_info=True)
 
 def stop_dns_ampl():
-    """Zatrzymuje ochronę przed DNS Amplification"""
-    print("🛑 Zatrzymywanie ochrony przed DNS Amplification...")
+    """Zatrzymuje ochronę DNS Amplification"""
+    print("🛑 Zatrzymywanie ochrony DNS Amplification...")
+    system_logger.info("🛑 Ochrona DNS Amplification zatrzymana")
     stop_event.set()
     packet_queue.queue.clear()
+    debug_logger.debug("🧹 Wyczyściłem kolejkę DNS")

@@ -33,7 +33,7 @@ def log_traffic_to_db(data):
         )
         db.session.add(entry)
         db.session.commit()
-        print(f"✅ Zapisano dane: TCP={entry.total_tcp}, UDP={entry.total_udp}, ICMP={entry.total_icmp}, ALL={entry.total_all}")
+        #print(f"✅ Zapisano dane: TCP={entry.total_tcp}, UDP={entry.total_udp}, ICMP={entry.total_icmp}, ALL={entry.total_all}")
 
 def analyze_packet(packet):
     if packet.haslayer(IP):

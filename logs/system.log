@@ -218,3 +218,108 @@
 2025-05-04 11:46:32 - ACL.System - WARNING - app.py:240 - [MODERATOR] kacper stopped module: traffic_monitor
 2025-05-04 11:46:33 - ACL.System - WARNING - app.py:240 - [MODERATOR] kacper stopped module: traffic_monitor
 2025-05-04 11:47:00 - ACL.System - INFO - app.py:225 - [ADMIN] admin started module: traffic_monitor
+2025-05-08 16:30:40 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: traffic_monitor
+2025-05-08 16:30:59 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-08 16:30:59 - ACL.System - INFO - bandwidth_limiter.py:55 - Monitorowanie ruchu zostało uruchomione.
+2025-05-08 16:31:00 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: syn_flood
+2025-05-09 08:23:38 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: traffic_monitor
+2025-05-09 08:35:16 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 08:35:16 - ACL.System - INFO - bandwidth_limiter.py:56 - Bandwidth limiter został uruchomiony.
+2025-05-09 08:39:32 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 08:39:32 - ACL.System - INFO - bandwidth_limiter.py:73 - Bandwidth limiter został uruchomiony.
+2025-05-09 08:42:02 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 08:42:02 - ACL.System - INFO - bandwidth_limiter.py:67 - Bandwidth limiter został uruchomiony.
+2025-05-09 08:46:02 - ACL.System - WARNING - bandwidth_limiter.py:48 - WYKRYTO ATAK: 51.83.131.60 - 83.00 MB / 10 s
+2025-05-09 08:46:02 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 51.83.131.60 (Powód: Zbyt duże zużycie pasma)
+2025-05-09 08:47:02 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 51.83.131.60 po 60 sekundach
+2025-05-09 08:57:08 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: syn_flood
+2025-05-09 08:57:08 - ACL.System - INFO - syn_flood.py:65 - 🛡️ Ochrona przed SYN flood uruchomiona
+2025-05-09 08:59:45 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 08:59:45 - ACL.System - INFO - bandwidth_limiter.py:67 - Bandwidth limiter został uruchomiony.
+2025-05-09 09:00:12 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: syn_flood
+2025-05-09 09:00:12 - ACL.System - INFO - syn_flood.py:70 - 🛡️ Ochrona przed SYN flood uruchomiona
+2025-05-09 09:02:15 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: udp_flood
+2025-05-09 09:02:15 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: dns_ampl
+2025-05-09 09:02:15 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: ntp_ampl
+2025-05-09 09:02:16 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bypass_protection
+2025-05-09 09:02:17 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: AI.ai_traffic_monitor
+2025-05-09 09:02:19 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: network_traffic
+2025-05-09 09:02:35 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: traffic_monitor
+2025-05-09 09:02:36 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:03:06 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:03:10 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bypass_protection
+2025-05-09 09:06:52 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: AI.ai_traffic_monitor
+2025-05-09 09:22:52 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: udp_flood
+2025-05-09 09:25:30 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: dns_ampl
+2025-05-09 09:27:04 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: ntp_ampl
+2025-05-09 09:28:19 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bypass_protection
+2025-05-09 09:28:49 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:29:19 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:29:49 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:30:19 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:30:39 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:31:09 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:31:19 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:31:49 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:32:09 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:32:39 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:32:49 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:33:19 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 09:33:23 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bypass_protection
+2025-05-09 09:35:39 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bypass_protection
+2025-05-09 09:36:08 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bypass_protection
+2025-05-09 09:36:09 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 79.139.113.14 (Powód: Bypass Firewall Attack)
+2025-05-09 09:36:39 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 79.139.113.14 po 30 sekundach
+2025-05-09 15:38:33 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:38:33 - ACL.System - INFO - bandwidth_limiter.py:67 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:39:58 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:39:58 - ACL.System - INFO - bandwidth_limiter.py:93 - Zatrzymano bandwidth limiter.
+2025-05-09 15:39:59 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:40:00 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:40:00 - ACL.System - INFO - bandwidth_limiter.py:67 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:42:35 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:42:35 - ACL.System - INFO - bandwidth_limiter.py:70 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:42:43 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:42:43 - ACL.System - INFO - bandwidth_limiter.py:96 - Zatrzymano bandwidth limiter.
+2025-05-09 15:42:48 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:42:48 - ACL.System - INFO - bandwidth_limiter.py:70 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:43:48 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:43:48 - ACL.System - INFO - bandwidth_limiter.py:70 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:45:16 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:45:16 - ACL.System - INFO - bandwidth_limiter.py:96 - Zatrzymano bandwidth limiter.
+2025-05-09 15:45:23 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:45:23 - ACL.System - INFO - bandwidth_limiter.py:70 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:47:51 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:47:51 - ACL.System - INFO - bandwidth_limiter.py:70 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:48:36 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:48:36 - ACL.System - INFO - bandwidth_limiter.py:73 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:49:00 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:49:00 - ACL.System - INFO - bandwidth_limiter.py:99 - Zatrzymano bandwidth limiter.
+2025-05-09 15:49:01 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:49:21 - ACL.System - INFO - app.py:226 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 15:49:21 - ACL.System - INFO - bandwidth_limiter.py:73 - Bandwidth limiter został uruchomiony.
+2025-05-09 15:49:39 - ACL.System - INFO - app.py:243 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 15:49:39 - ACL.System - INFO - bandwidth_limiter.py:99 - Zatrzymano bandwidth limiter.
+2025-05-09 16:24:03 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 16:24:03 - ACL.System - INFO - bandwidth_limiter.py:73 - Bandwidth limiter został uruchomiony.
+2025-05-09 16:40:50 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: bandwidth_limiter
+2025-05-09 16:40:50 - ACL.System - INFO - bandwidth_limiter.py:73 - Bandwidth limiter został uruchomiony.
+2025-05-09 16:40:51 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 16:40:51 - ACL.System - INFO - bandwidth_limiter.py:99 - Zatrzymano bandwidth limiter.
+2025-05-09 16:40:52 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 16:44:11 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: bandwidth_limiter
+2025-05-09 16:48:24 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: syn_flood
+2025-05-09 16:48:24 - ACL.System - INFO - syn_flood.py:78 - 🛡️ Ochrona przed SYN flood uruchomiona
+2025-05-09 16:48:43 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: syn_flood
+2025-05-09 16:48:43 - ACL.System - INFO - syn_flood.py:93 - 🛑 Ochrona przed SYN flood zatrzymana
+2025-05-09 16:52:33 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: udp_flood
+2025-05-09 16:53:05 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: udp_flood
+2025-05-09 16:53:08 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: udp_flood
+2025-05-09 16:53:59 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: udp_flood
+2025-05-09 16:56:39 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: udp_flood
+2025-05-09 16:56:50 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: udp_flood
+2025-05-09 17:27:03 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: udp_flood
+2025-05-09 17:27:09 - ACL.System - INFO - app.py:227 - [ADMIN] admin started module: dns_ampl
+2025-05-09 17:27:09 - ACL.System - INFO - dns_ampl.py:69 - 🛡️ Ochrona przed DNS Amplification uruchomiona
+2025-05-09 17:27:19 - ACL.System - INFO - app.py:244 - [ADMIN] admin stopped module: dns_ampl
+2025-05-09 17:27:19 - ACL.System - INFO - dns_ampl.py:83 - 🛑 Ochrona DNS Amplification zatrzymana

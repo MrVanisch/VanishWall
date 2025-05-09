@@ -1,0 +1,9 @@
+2025-05-09 08:46:02 - ACL.Security - ERROR - logger.py:75 - 🚨 Wykryto atak typu Bandwidth Flood z IP: 51.83.131.60. 83.00 MB w 10s
+2025-05-09 08:46:02 - ACL.Security - WARNING - logger.py:70 - 🛡️ Zablokowano pakiet od podejrzanego IP: 51.83.131.60
+2025-05-09 09:28:49 - ACL.Security - WARNING - bypass_protection.py:82 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14
+2025-05-09 09:29:49 - ACL.Security - WARNING - bypass_protection.py:82 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14
+2025-05-09 09:30:39 - ACL.Security - WARNING - bypass_protection.py:82 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14
+2025-05-09 09:31:19 - ACL.Security - WARNING - bypass_protection.py:82 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14
+2025-05-09 09:32:09 - ACL.Security - WARNING - bypass_protection.py:82 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14
+2025-05-09 09:32:49 - ACL.Security - WARNING - bypass_protection.py:82 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14
+2025-05-09 09:36:09 - ACL.Security - WARNING - bypass_protection.py:81 - 🚨 Potencjalny atak typu Bypass Firewall wykryty z IP 79.139.113.14

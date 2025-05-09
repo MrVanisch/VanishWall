@@ -16,6 +16,7 @@ from flask import abort
 from wtforms import SelectField  # dodaj do importów jeśli jeszcze nie ma
 from functools import wraps
 from flask import send_file
+from api.settings import settings_bp
 
 # Ustawienie katalogu głównego projektu
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -396,7 +397,8 @@ def system_status():
         "memory": memory.percent
     })
 
-
+from api.settings import settings_bp
+app.register_blueprint(settings_bp)
 
 
 if __name__ == "__main__":
