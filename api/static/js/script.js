@@ -250,3 +250,57 @@ function closeDynamicModal() {
   document.getElementById("dynamicModal").style.display = "none";
 }
 
+// log 
+document.getElementById("clearLog").addEventListener("click", async () => {
+    const type = document.getElementById("logType").value;
+    if (!confirm("Czy na pewno chcesz wyczyścić log " + type + "?")) return;
+
+    const response = await fetch(`/api/logs/${type}/clear`, {
+        method: "POST"
+    });
+
+    const result = await response.json();
+    alert(result.message || "Wyczyszczono.");
+    loadLog();  // przeładuj widok
+});
+
+async function blockIPManual() {
+    const ip = document.getElementById("manualIP").value;
+    const duration = document.getElementById("manualDuration").value || 60;
+
+    if (!ip) {
+        alert("Wprowadź adres IP.");
+        return;
+    }
+
+    const response = await fetch("/api/block_ip_manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip, duration })
+    });
+
+    const result = await response.json();
+    alert(result.message || "Gotowe.");
+}
+
+let autoRefreshTimer = null;
+
+function manageAutoRefresh() {
+  const enabled = document.getElementById("autoRefresh").checked;
+  const interval = parseInt(document.getElementById("refreshInterval").value) * 1000;
+
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+
+  if (enabled && interval >= 3000) {
+    autoRefreshTimer = setInterval(() => {
+      loadLog();
+    }, interval);
+  }
+}
+
+// Eventy
+document.getElementById("autoRefresh").addEventListener("change", manageAutoRefresh);
+document.getElementById("refreshInterval").addEventListener("input", manageAutoRefresh);

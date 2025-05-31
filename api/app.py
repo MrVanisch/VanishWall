@@ -17,6 +17,8 @@ from wtforms import SelectField  # dodaj do importów jeśli jeszcze nie ma
 from functools import wraps
 from flask import send_file
 from api.settings import settings_bp
+from modules.acl import ACLManager
+
 
 # Ustawienie katalogu głównego projektu
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -356,18 +358,6 @@ LOG_FILES = {
 }
 
 
-@app.route("/api/logs/<log_type>")
-@role_required("admin", "moderator")
-@login_required
-def get_log_content(log_type):
-    path = LOG_FILES.get(log_type)
-    if not path or not os.path.exists(path):
-        return abort(404, "Nie znaleziono logu.")
-    
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        lines = f.readlines()[-500:]  # ostatnie 500 linii
-    return jsonify(lines)
-
 @app.route("/download/log/<log_type>")
 @role_required("admin", "moderator")
 @login_required
@@ -399,6 +389,66 @@ def system_status():
 
 from api.settings import settings_bp
 app.register_blueprint(settings_bp)
+
+@app.route("/api/logs/<log_type>")
+@role_required("admin", "moderator")
+@login_required
+def get_log_content(log_type):
+    path = LOG_FILES.get(log_type)
+    if not path or not os.path.exists(path):
+        return abort(404, "Nie znaleziono logu.")
+
+    ip_filter = request.args.get("ip", "").strip()
+    port_filter = request.args.get("port", "").strip()
+
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.readlines()
+
+    # Filtrowanie
+    filtered = []
+    for line in lines:
+        if ip_filter and ip_filter not in line:
+            continue
+        if port_filter and port_filter not in line:
+            continue
+        filtered.append(line)
+
+    return jsonify(filtered[-500:])  # maksymalnie 500 ostatnich
+
+@app.route("/api/logs/<log_type>/clear", methods=["POST"])
+@role_required("admin")  # tylko admin może czyścić logi
+@login_required
+def clear_log(log_type):
+    path = LOG_FILES.get(log_type)
+    if not path or not os.path.exists(path):
+        return abort(404, "Nie znaleziono logu.")
+
+    try:
+        with open(path, "w"):  # nadpisanie pustą zawartością
+            pass
+        return jsonify({"status": "success", "message": f"🧹 Log {log_type} został wyczyszczony."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Błąd czyszczenia logu: {e}"}), 500
+
+acl_manager = ACLManager()  # lub użyj globalnego, jeśli masz
+
+@app.route("/api/block_ip_manual", methods=["POST"])
+@role_required("admin", "moderator")
+@login_required
+def block_ip_manual():
+    data = request.get_json()
+    ip = data.get("ip")
+    reason = data.get("reason", "Manual block")
+    duration = int(data.get("duration", 60))
+
+    if not ip:
+        return jsonify({"status": "error", "message": "Brak adresu IP."}), 400
+
+    # Obsługa niestandardowego czasu blokady
+    acl = ACLManager(block_time=duration)
+    acl.block_ip(ip, reason)
+
+    return jsonify({"status": "success", "message": f"Zablokowano IP {ip} na {duration} sek."})
 
 
 if __name__ == "__main__":

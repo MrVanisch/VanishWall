@@ -2,28 +2,73 @@
 {% block content %}
 <h3 class="mb-3">Podgląd logów</h3>
 
-<div class="mb-3">
-    <label for="logType" class="form-label">Wybierz typ logu:</label>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <label for="logType" class="form-label">Typ logu:</label>
     <select id="logType" class="form-select">
-        <option value="system">System</option>
-        <option value="traffic">Ruch</option>
-        <option value="security">Bezpieczeństwo</option>
-        <option value="debug">Debug</option>
+      <option value="system">System</option>
+      <option value="traffic">Ruch</option>
+      <option value="security">Bezpieczeństwo</option>
+      <option value="debug">Debug</option>
     </select>
+  </div>
+  <div class="col-md-4">
+    <label for="ipSearch" class="form-label">Filtr IP:</label>
+    <input type="text" id="ipSearch" class="form-control" placeholder="np. 192.168.0.1">
+  </div>
+  <div class="col-md-4">
+    <label for="portSearch" class="form-label">Filtr portu:</label>
+    <input type="text" id="portSearch" class="form-control" placeholder="np. 443">
+  </div>
 </div>
 
-<div class="mb-3">
-    <button id="refreshLog" class="btn btn-primary">Odśwież</button>
-    <a id="downloadLink" class="btn btn-outline-secondary" href="#" download>Pobierz</a>
+<div class="card p-3 mb-4 bg-dark text-white shadow-sm">
+  <h5 class="mb-3">⛔ Zablokuj IP ręcznie</h5>
+  <div class="row g-2">
+    <div class="col-md-4">
+      <input type="text" class="form-control" id="manualIP" placeholder="Adres IP">
+    </div>
+    <div class="col-md-4">
+      <input type="number" class="form-control" id="manualDuration" placeholder="Czas (s)" value="60">
+    </div>
+    <div class="col-md-4">
+      <button class="btn btn-danger w-100" id="manualBlockBtn">ZABLOKUJ IP</button>
+    </div>
+  </div>
 </div>
+
+<div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+    <button id="refreshLog" class="btn btn-primary">🔄 Odśwież</button>
+    <a id="downloadLink" class="btn btn-outline-secondary" href="#" download>⬇️ Pobierz</a>
+    <button class="btn btn-danger" id="clearLog">🧹 Wyczyść log</button>
+
+    <div class="form-check ms-2">
+        <input class="form-check-input" type="checkbox" id="autoRefresh">
+        <label class="form-check-label text-white" for="autoRefresh">
+            Auto-odświeżanie
+        </label>
+    </div>
+
+    <div class="d-flex align-items-center">
+        <input type="number" id="refreshInterval" class="form-control form-control-sm bg-dark text-white border-secondary ms-2 me-1" value="10" min="3" max="300" style="width: 80px;">
+        <span class="text-white">sek</span>
+    </div>
+</div>
+
+
 
 <pre id="logViewer" class="log-output"></pre>
 
 <script>
     async function loadLog() {
         const type = document.getElementById("logType").value;
+        const ip = document.getElementById("ipSearch").value;
+        const port = document.getElementById("portSearch").value;
         const viewer = document.getElementById("logViewer");
-        const response = await fetch(`/api/logs/${type}`);
+
+        const params = new URLSearchParams({ ip, port });
+        const response = await fetch(`/api/logs/${type}?${params.toString()}`);
+
         if (response.ok) {
             const lines = await response.json();
             viewer.textContent = lines.join("");

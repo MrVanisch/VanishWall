@@ -265,3 +265,6 @@ def update_traffic_monitor_settings():
     })
 
     return jsonify({"status": "success"})
+
+# -------------------- Logs --------------------
+

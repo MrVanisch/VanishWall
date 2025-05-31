@@ -18,12 +18,13 @@ formatter = logging.Formatter("%(asctime)s - %(message)s")
 file_handler.setFormatter(formatter)
 traffic_logger.addHandler(file_handler)
 
-from config import CONFIG
+import importlib
+import  config 
+
 
 def get_traffic_config():
-    import importlib
-    importlib.reload(CONFIG)
-    return CONFIG.get("CHECK_INTERVAL_TRAFFIC", 10)
+    importlib.reload(config)  # Odświeżenie zawartości config.py
+    return config.CONFIG.get("CHECK_INTERVAL_TRAFFIC", 10)
 
 # Słowniki do przechowywania ruchu
 packet_count = 0  # Liczba pakietów w danym okresie
