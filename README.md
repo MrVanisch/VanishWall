@@ -43,7 +43,7 @@ Once launched, access it in your browser at:
 
 | Username | Password |
 |----------|----------|
-| admin    | admin1   |
+| admin    | admin123   |
 ```
 ⚠️ It's strongly recommended to change your credentials immediately after first login.
 
@@ -67,7 +67,10 @@ VanishWall/
 ✅ **DDoS Attack Detection:**
 - SYN Flood  
 - UDP Flood  
-- DNS Amplification  
+- DNS Amplification
+- NTP Amplification
+- Limiter
+- BYPASS
 
 ✅ IP Auto-blocking System  
 ✅ AI-Powered Anomaly Detection  
