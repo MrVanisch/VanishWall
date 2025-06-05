@@ -1,9 +1,1 @@
-2025-05-31 18:56:28 - ACL.System - INFO - app.py:228 - [ADMIN] admin started module: traffic_monitor
-2025-05-31 19:01:02 - ACL.System - WARNING - acl.py:39 - ACL: ZABLOKOWANO IP: 149.156.124.1 (Powód: Manual block)
-2025-05-31 19:01:12 - ACL.System - INFO - acl.py:56 - ACL: ODBLOKOWANO IP: 149.156.124.1 po 10 sekundach
-2025-05-31 19:09:02 - ACL.System - INFO - app.py:229 - [ADMIN] admin started module: traffic_monitor
-2025-05-31 19:10:03 - ACL.System - INFO - app.py:229 - [ADMIN] admin started module: bandwidth_limiter
-2025-05-31 19:10:03 - ACL.System - INFO - bandwidth_limiter.py:73 - Bandwidth limiter został uruchomiony.
-2025-05-31 19:11:09 - ACL.System - INFO - app.py:246 - [ADMIN] admin stopped module: bandwidth_limiter
-2025-05-31 19:11:09 - ACL.System - INFO - bandwidth_limiter.py:99 - Zatrzymano bandwidth limiter.
-2025-05-31 19:11:10 - ACL.System - INFO - app.py:246 - [ADMIN] admin stopped module: bandwidth_limiter
+
