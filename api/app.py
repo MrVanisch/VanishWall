@@ -28,12 +28,13 @@ sys.path.insert(0, BASE_DIR)
 MODULES_MAP = {
     "traffic_monitor": "enable_traffic_monitor",
     "bandwidth_limiter": "enable_bandwidth_limiter",
+    "port_scanner": "enable_port_scanner_protection",
     "syn_flood": "enable_syn_flood_protection",
     "udp_flood": "enable_udp_flood_protection",
     "dns_ampl": "enable_dns_amplification_protection",
     "ntp_ampl": "enable_ntp_protection",
     "bypass_protection": "enable_bypass_protection",
-    "AI.ai_traffic_monitor": "enable_ai_protection",
+    
 }
 
 AVAILABLE_MODULES = {}
@@ -354,7 +355,10 @@ LOG_FILES = {
     "system": os.path.join(LOG_DIR, "system.log"),
     "traffic": os.path.join(LOG_DIR, "traffic.log"),
     "security": os.path.join(LOG_DIR, "security.log"),
-    "debug": os.path.join(LOG_DIR, "debug.log")
+    "debug": os.path.join(LOG_DIR, "debug.log"),
+    "security_monitor": os.path.join(LOG_DIR, "security_monitor.log"),  
+    "security_alerts": os.path.join(LOG_DIR, "security_alerts.log")
+    
 }
 
 
@@ -450,9 +454,13 @@ def block_ip_manual():
 
     return jsonify({"status": "success", "message": f"Zablokowano IP {ip} na {duration} sek."})
 
+from modules.traffic_monitor_api import traffic_bp
+app.register_blueprint(traffic_bp)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == "__main__":
     db.create_all()  # domyślna baza
     db.create_all(bind='chart')  # utwórz tabelę dla wykresu
     create_default_admin()
+    app.register_blueprint(traffic_bp, url_prefix='')
     app.run(host="0.0.0.0", port=5000, debug=True)

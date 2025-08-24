@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block title %}Traffic Monitor{% endblock %}
+
+{% block head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Nagłówek -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div>
+                            <h2 class="mb-0">
+                                <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                                <p class="text-white "> 
+                                Traffic Monitor
+                                </p>
+                            </h2>
+                            <p class="text-muted mb-0">Monitor ruchu sieciowego w czasie rzeczywistym</p>
+                        </div>
+                        <button id="refresh-btn" class="btn btn-outline-primary btn-lg mt-3 mt-md-0">
+                            <i class="fas fa-sync-alt me-1"></i>Odśwież
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sterowanie -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex gap-3 flex-wrap justify-content-center justify-content-md-start">
+                        <button id="start-btn" class="btn btn-success btn-lg px-4">
+                            <i class="fas fa-play me-2"></i>Start Monitor
+                        </button>
+                        <button id="stop-btn" class="btn btn-danger btn-lg px-4">
+                            <i class="fas fa-stop me-2"></i>Stop Monitor
+                        </button>
+                        <button id="restart-btn" class="btn btn-warning btn-lg px-4">
+                            <i class="fas fa-redo me-2"></i>Restart Monitor
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Karty statystyk -->
+    <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-power-off fa-3x text-primary mb-3"></i>
+                    <h6 class="card-title text-white-50">STATUS</h6>
+                    <p class="h4 fw-bold text-white" data-key="monitoring_active">Ładowanie...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-clock fa-3x text-info mb-3"></i>
+                    <h6 class="card-title text-white-50">UPTIME (S)</h6>
+                    <p class="h4 fw-bold text-white" data-key="uptime_seconds">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-network-wired fa-3x text-success mb-3"></i>
+                    <h6 class="card-title text-white-50">PAKIETY</h6>
+                    <p class="h4 fw-bold text-white" data-key="total_packets">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-database fa-3x text-warning mb-3"></i>
+                    <h6 class="card-title text-white-50">DANE (MB)</h6>
+                    <p class="h4 fw-bold text-white" data-key="total_mb">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-cogs fa-3x text-secondary mb-3"></i>
+                    <h6 class="card-title text-white-50">USŁUGI</h6>
+                    <p class="h4 fw-bold text-white" data-key="active_services">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-globe fa-3x text-info mb-3"></i>
+                    <h6 class="card-title text-white-50">MONITOROWANE IP</h6>  
+                    <p class="h4 fw-bold text-white" data-key="monitored_ips">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h6 class="card-title text-white-50">ALERTY</h6>
+                    <p class="h4 fw-bold text-white" data-key="recent_alerts">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-chart-line fa-3x text-purple mb-3"></i>
+                    <h6 class="card-title text-white-50">PAKIETY/S</h6>
+                    <p class="h4 fw-bold text-white" data-key="packets_per_second">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wykresy -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Rozkład alertów
+                        <small class="float-end opacity-75">Ostatnie 60 min</small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="alert-breakdown-chart"></canvas>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Kliknij na legendę aby ukryć/pokazać kategorie</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Najczęstsze usługi
+                        <small class="float-end opacity-75">Top 7 usług</small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="top-services-chart"></canvas>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Liczba pakietów według typu usługi</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista alertów -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-alt me-2"></i>Najnowsze alerty
+                        <small class="float-end opacity-75">Real-time</small>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul id="recent-alerts" class="list-group list-group-flush">
+                        <li class="list-group-item text-center py-5">
+                            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                            <h5 class="mb-2">Inicjalizacja monitora...</h5>
+                            <small class="text-muted">Ładowanie danych bezpieczeństwa</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script src="{{ url_for('static', filename='js/traffic_monitor.js') }}"></script>
+{% endblock %}

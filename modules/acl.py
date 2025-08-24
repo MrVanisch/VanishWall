@@ -2,65 +2,90 @@ import subprocess
 import sqlite3
 import time
 import threading
-from modules.logger import system_logger  # Poprawne logowanie
+import os
+from modules.logger import system_logger
+
 
 class ACLManager:
-    """Klasa do zarządzania regułami ACL (blokowanie i odblokowywanie IP)."""
+    def __init__(self, block_time=10, max_block_time=300, db_name="blocklist.db", whitelist=None):
+        self.default_block_time = block_time
+        self.max_block_time = max_block_time
+        # Zawsze umieszczaj bazę w folderze instance
+        self.db_path = os.path.join("instance", db_name)
+        self.whitelist = set(whitelist or {"127.0.0.1", "8.8.8.8", "1.1.1.1"})
 
-    def __init__(self, block_time=10, whitelist=None, db_path="blocklist.db"):
-        """
-        Inicjalizacja ACL Managera.
-        :param block_time: Czas blokady IP w sekundach.
-        :param whitelist: Lista IP, które nigdy nie będą blokowane.
-        :param db_path: Ścieżka do bazy danych SQLite.
-        """
-        self.block_time = block_time
-        self.whitelist = whitelist if whitelist else {"8.8.8.8", "1.1.1.1"}
-        self.db_path = db_path
+        self._setup_database()
 
-        # Połączenie z bazą danych
+    def _setup_database(self):
+        # Upewnij się, że folder instance istnieje
+        os.makedirs("instance", exist_ok=True)
+
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
+
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS acl_rules (
                 ip TEXT PRIMARY KEY,
                 reason TEXT,
-                last_seen TIMESTAMP
+                last_seen REAL,
+                fail_count INTEGER DEFAULT 0,
+                is_blocked INTEGER DEFAULT 0
             )
         """)
         self.conn.commit()
 
     def block_ip(self, ip, reason="Unknown"):
-        """Blokuje IP w iptables i zapisuje do bazy danych."""
         if ip in self.whitelist:
-            system_logger.info(f"ACL: IP {ip} jest na whiteliście - pomijam blokowanie.")
+            system_logger.info(f"ACL: IP {ip} znajduje się na whiteliście – pomijam.")
             return
 
-        system_logger.warning(f"ACL: ZABLOKOWANO IP: {ip} (Powód: {reason})")
-        print(f"ACL: ZABLOKOWANO IP: {ip} (Powód: {reason})")
+        now = time.time()
 
-        subprocess.run(["iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"])
-        self.cursor.execute("INSERT OR REPLACE INTO acl_rules (ip, reason, last_seen) VALUES (?, ?, ?)", 
-                            (ip, reason, time.time()))
+        self.cursor.execute("SELECT fail_count FROM acl_rules WHERE ip=?", (ip,))
+        row = self.cursor.fetchone()
+
+        if row:
+            fail_count = row[0] + 1
+        else:
+            fail_count = 1
+
+        block_time = min(self.default_block_time * fail_count, self.max_block_time)
+
+        subprocess.run(["iptables", "-I", "INPUT", "-s", ip, "-j", "DROP"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        self.cursor.execute("""
+            INSERT INTO acl_rules (ip, reason, last_seen, fail_count, is_blocked)
+            VALUES (?, ?, ?, ?, 1)
+            ON CONFLICT(ip) DO UPDATE SET
+                reason=excluded.reason,
+                last_seen=excluded.last_seen,
+                fail_count=excluded.fail_count,
+                is_blocked=1
+        """, (ip, reason, now, fail_count))
         self.conn.commit()
 
-        # Zaplanowanie automatycznego odblokowania po upływie block_time
-        threading.Timer(self.block_time, self.unblock_ip, [ip]).start()
+        system_logger.warning(f"ACL: ZABLOKOWANO IP: {ip} (Powód: {reason}) na {block_time}s")
+        print(f"ACL: ZABLOKOWANO IP: {ip} (Powód: {reason}) na {block_time}s")
+
+        threading.Timer(block_time, self.unblock_ip, [ip]).start()
 
     def unblock_ip(self, ip):
-        """Odblokowuje IP w iptables i usuwa je z bazy danych."""
-        subprocess.run(["iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"])
-        self.cursor.execute("DELETE FROM acl_rules WHERE ip=?", (ip,))
+        try:
+            subprocess.run(["iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            system_logger.error(f"Błąd odblokowania IP {ip}: {e}")
+
+        # Zamiast usuwać – oznacz jako odblokowane
+        self.cursor.execute("UPDATE acl_rules SET is_blocked=0 WHERE ip=?", (ip,))
         self.conn.commit()
 
-        system_logger.info(f"ACL: ODBLOKOWANO IP: {ip} po {self.block_time} sekundach")
-        print(f"ACL: ODBLOKOWANO IP: {ip} po {self.block_time} sekundach")
+        system_logger.info(f"ACL: ODBLOKOWANO IP: {ip}")
+        print(f"ACL: ODBLOKOWANO IP: {ip}")
 
     def is_blocked(self, ip):
-        """Sprawdza, czy IP jest już zablokowane."""
-        self.cursor.execute("SELECT ip FROM acl_rules WHERE ip=?", (ip,))
-        return self.cursor.fetchone() is not None
+        self.cursor.execute("SELECT is_blocked FROM acl_rules WHERE ip=?", (ip,))
+        result = self.cursor.fetchone()
+        return result and result[0] == 1
 
     def close(self):
-        """Zamyka połączenie z bazą danych."""
         self.conn.close()

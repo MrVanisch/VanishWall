@@ -59,7 +59,7 @@
         <div class="card-body">
           <div id="modules-list">
             {% if available_modules %}
-              {% for module in available_modules if module != "network_traffic" %}
+              {% for module in available_modules if module not in ["network_traffic", "traffic_monitor"] %}
                 <div class="module-item" data-module="{{ module }}">
                   <div class="module-info">
                     <div class="module-name">
@@ -76,8 +76,8 @@
                       <i class="fas fa-stop"></i> Stop
                     </button>
                     {% if module in [
-                      'traffic_monitor', 'bandwidth_limiter', 'syn_flood', 'udp_flood',
-                      'dns_ampl', 'ntp_ampl', 'bypass_protection', 'AI.ai_traffic_monitor'
+                      'bandwidth_limiter', 'port_scanner', 'syn_flood', 'udp_flood',
+                      'dns_ampl', 'ntp_ampl', 'bypass_protection'
                     ] %}
                       <button class="btn btn-secondary btn-sm"
                               onclick="openSettingsModal('{{ module }}')"

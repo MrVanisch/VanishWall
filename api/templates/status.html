@@ -5,18 +5,74 @@
   <h1>Status Ruchu Sieciowego</h1>
   <p>Wizualizacja aktualnego ruchu sieciowego.</p>
 
-  <div class="btn-group mb-3" role="group">
-    <button class="btn btn-outline-light" onclick="fetchTrafficData(5)">5 min</button>
-    <button class="btn btn-outline-light" onclick="fetchTrafficData(60)">1 godzina</button>
-    <button class="btn btn-outline-light" onclick="fetchTrafficData(1440)">24 godziny</button>
-    <button class="btn btn-outline-secondary" onclick="trafficChart.resetZoom(); sentReceivedChart.resetZoom();">Resetuj Zoom</button>
+  <!-- Nowy panel kontrolny -->
+  <div class="card bg-dark border-secondary mb-4">
+    <div class="card-body">
+      <div class="row">
+        <!-- Suwak zakresu czasowego -->
+        <div class="col-md-6">
+          <label class="form-label text-light">Zakres czasowy:</label>
+          <div class="d-flex align-items-center">
+            <span class="text-muted me-2">5min</span>
+            <input type="range" class="form-range flex-grow-1" id="timeRangeSlider" 
+                   min="0" max="6" value="0" step="1">
+            <span class="text-muted ms-2">7dni</span>
+          </div>
+          <small class="text-info" id="timeRangeLabel">Zakres: 5 minut</small>
+        </div>
+
+        <!-- Kontrolki odświeżania -->
+        <div class="col-md-3">
+          <label class="form-label text-light">Auto-odświeżanie:</label>
+          <select class="form-select form-select-sm bg-dark text-light border-secondary" id="refreshInterval">
+            <option value="0">Wyłączone</option>
+            <option value="1000">1s</option>
+            <option value="2000">2s</option>
+            <option value="5000" selected>5s</option>
+            <option value="10000">10s</option>
+            <option value="30000">30s</option>
+          </select>
+        </div>
+
+        <!-- Przyciski akcji -->
+        <div class="col-md-3">
+          <label class="form-label text-light">Akcje:</label>
+          <div class="btn-group-vertical d-grid gap-1">
+            <button class="btn btn-outline-primary btn-sm" id="refreshBtn">🔄 Odśwież</button>
+            <button class="btn btn-outline-warning btn-sm" id="resetZoomBtn">🔍 Reset Zoom</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pasek statusu -->
+      <div class="row mt-3">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">
+              <span id="dataPointsInfo">Punkty danych: 0</span> | 
+              <span id="lastUpdateInfo">Ostatnia aktualizacja: nigdy</span>
+            </small>
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-success btn-sm" id="liveBtn" title="Tryb na żywo">📡 Live</button>
+              <button class="btn btn-outline-info btn-sm" id="pauseBtn" title="Pauzuj aktualizacje">⏸️ Pauza</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- Wykresy -->
   <h4>Protokoły (TCP / UDP / ICMP / Wszystko)</h4>
-  <canvas id="trafficChart" class="mb-5"></canvas>
+  <div class="position-relative">
+    <canvas id="trafficChart" class="mb-4"></canvas>
+    <div id="chartTooltip" class="chart-tooltip"></div>
+  </div>
 
   <h4>Wysłane vs Odebrane pakiety</h4>
-  <canvas id="sentReceivedChart" class="mb-5"></canvas>
+  <div class="position-relative">
+    <canvas id="sentReceivedChart" class="mb-4"></canvas>
+  </div>
 </div>
 
 <!-- Skrypty -->
@@ -28,7 +84,32 @@
   const ZoomPlugin = window.ChartZoom;
   Chart.register(ZoomPlugin);
 
-  let currentRange = null;
+  // Konfiguracja zakresów czasowych - zwiększone limity punktów dla lepszej precyzji
+  const timeRanges = [
+    { value: 5, label: '5 minut', maxPoints: 300 },    // Zwiększone z 100
+    { value: 15, label: '15 minut', maxPoints: 450 },  // Zwiększone z 90
+    { value: 30, label: '30 minut', maxPoints: 600 },  // Zwiększone z 80
+    { value: 60, label: '1 godzina', maxPoints: 720 }, // Zwiększone z 70
+    { value: 360, label: '6 godzin', maxPoints: 1080 }, // Zwiększone z 60
+    { value: 1440, label: '24 godziny', maxPoints: 1440 }, // Zwiększone z 50
+    { value: 10080, label: '7 dni', maxPoints: 2016 }  // Zwiększone z 40
+  ];
+
+  let currentRange = 5;
+  let refreshIntervalId = null;
+  let isPaused = false;
+  let isLiveMode = true;
+
+  // Elementy UI
+  const timeRangeSlider = document.getElementById('timeRangeSlider');
+  const timeRangeLabel = document.getElementById('timeRangeLabel');
+  const refreshIntervalSelect = document.getElementById('refreshInterval');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const resetZoomBtn = document.getElementById('resetZoomBtn');
+  const liveBtn = document.getElementById('liveBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const dataPointsInfo = document.getElementById('dataPointsInfo');
+  const lastUpdateInfo = document.getElementById('lastUpdateInfo');
 
   function fixCanvasResolution(canvas) {
     const dpr = window.devicePixelRatio || 1;
@@ -40,15 +121,93 @@
     return ctx;
   }
 
+  // Poprawiona funkcja downsamplingu - zachowuje dokładne wartości
+  function intelligentDownsample(data, labels, maxPoints = 300) {
+    if (data.length <= maxPoints) {
+      return { data, labels };
+    }
+    
+    const totalPoints = data.length;
+    const step = totalPoints / maxPoints;
+    const result_data = [];
+    const result_labels = [];
+    
+    for (let i = 0; i < maxPoints; i++) {
+      const index = Math.floor(i * step);
+      if (index < data.length) {
+        // Zachowujemy oryginalną wartość zamiast uśredniania
+        result_data.push(data[index] || 0);
+        result_labels.push(labels[index]);
+      }
+    }
+    
+    return { data: result_data, labels: result_labels };
+  }
+
+  // Alternatywna funkcja dla zachowania szczytów (peaks)
+  function preservePeaksDownsample(data, maxPoints = 300) {
+    if (data.length <= maxPoints) return data;
+    
+    const step = Math.ceil(data.length / maxPoints);
+    const result = [];
+    
+    for (let i = 0; i < data.length; i += step) {
+      const chunk = data.slice(i, i + step);
+      if (chunk.length > 0) {
+        // Zachowujemy maksymalną wartość z każdego fragmentu zamiast średniej
+        const maxValue = Math.max(...chunk.filter(val => val != null));
+        result.push(isFinite(maxValue) ? maxValue : 0);
+      }
+    }
+    
+    return result;
+  }
+
   const trafficChart = new Chart(fixCanvasResolution(document.getElementById('trafficChart')), {
     type: 'line',
     data: {
       labels: [],
       datasets: [
-        { label: 'TCP Pakiety', borderColor: 'rgb(75, 192, 192)', data: [], fill: false, pointRadius: 0 },
-        { label: 'UDP Pakiety', borderColor: 'rgb(255, 99, 132)', data: [], fill: false, pointRadius: 0 },
-        { label: 'ICMP Pakiety', borderColor: 'rgb(153, 102, 255)', data: [], fill: false, pointRadius: 0 },
-        { label: 'Wszystkie Pakiety', borderColor: 'rgb(255, 159, 64)', data: [], fill: false, pointRadius: 0 }
+        { 
+          label: 'TCP Pakiety', 
+          borderColor: 'rgb(75, 192, 192)', 
+          backgroundColor: 'rgba(75, 192, 192, 0.1)',
+          data: [], 
+          fill: false, 
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        },
+        { 
+          label: 'UDP Pakiety', 
+          borderColor: 'rgb(255, 99, 132)', 
+          backgroundColor: 'rgba(255, 99, 132, 0.1)',
+          data: [], 
+          fill: false, 
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        },
+        { 
+          label: 'ICMP Pakiety', 
+          borderColor: 'rgb(153, 102, 255)', 
+          backgroundColor: 'rgba(153, 102, 255, 0.1)',
+          data: [], 
+          fill: false, 
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        },
+        { 
+          label: 'Wszystkie Pakiety', 
+          borderColor: 'rgb(255, 159, 64)', 
+          backgroundColor: 'rgba(255, 159, 64, 0.1)',
+          data: [], 
+          fill: false, 
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        }
       ]
     },
     options: getChartOptions()
@@ -59,51 +218,106 @@
     data: {
       labels: [],
       datasets: [
-        { label: 'Wysłane pakiety', borderColor: 'rgb(54, 162, 235)', data: [], fill: false, pointRadius: 0 },
-        { label: 'Odebrane pakiety', borderColor: 'rgb(255, 206, 86)', data: [], fill: false, pointRadius: 0 }
+        { 
+          label: 'Wysłane pakiety', 
+          borderColor: 'rgb(54, 162, 235)', 
+          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          data: [], 
+          fill: false, 
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        },
+        { 
+          label: 'Odebrane pakiety', 
+          borderColor: 'rgb(255, 206, 86)', 
+          backgroundColor: 'rgba(255, 206, 86, 0.1)',
+          data: [], 
+          fill: false, 
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        }
       ]
     },
     options: getChartOptions()
   });
 
   function fetchTrafficData(range = null) {
-    currentRange = range;
+    if (isPaused && !range) return;
+
+    const targetRange = range || currentRange;
     let url = '/api/status';
-    if (currentRange !== null) url += `?range=${currentRange}`;
+    if (targetRange !== null) url += `?range=${targetRange}`;
 
     fetch(url)
       .then(res => res.json())
       .then(data => {
         if (data.labels && data.labels.length > 0) {
-          const formattedLabels = data.labels.map(label => {
+          const rangeConfig = timeRanges.find(r => r.value === targetRange) || timeRanges[0];
+          const maxPoints = rangeConfig.maxPoints;
+          
+          // Używamy nowej funkcji downsamplingu
+          const tcpResult = intelligentDownsample(data.tcp_data || [], data.labels, maxPoints);
+          const udpResult = intelligentDownsample(data.udp_data || [], data.labels, maxPoints);
+          const icmpResult = intelligentDownsample(data.icmp_data || [], data.labels, maxPoints);
+          const allResult = intelligentDownsample(data.all_data || [], data.labels, maxPoints);
+          const sentResult = intelligentDownsample(data.sent_data || [], data.labels, maxPoints);
+          const receivedResult = intelligentDownsample(data.received_data || [], data.labels, maxPoints);
+
+          // Formatowanie etykiet czasowych
+          const formattedLabels = tcpResult.labels.map(label => {
             const d = new Date(label);
-            return d.toLocaleString('pl-PL', {
-              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-            });
+            if (targetRange <= 5) {
+              return d.toLocaleString('pl-PL', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+              });
+            } else if (targetRange <= 60) {
+              return d.toLocaleString('pl-PL', {
+                hour: '2-digit', minute: '2-digit', hour12: false
+              });
+            } else if (targetRange <= 1440) {
+              return d.toLocaleString('pl-PL', {
+                month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+              });
+            } else {
+              return d.toLocaleString('pl-PL', {
+                month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false
+              });
+            }
           });
 
+          // Aktualizacja pierwszego wykresu
           trafficChart.data.labels = formattedLabels;
-          trafficChart.data.datasets[0].data = data.tcp_data;
-          trafficChart.data.datasets[1].data = data.udp_data;
-          trafficChart.data.datasets[2].data = data.icmp_data;
-          trafficChart.data.datasets[3].data = data.all_data;
-          trafficChart.update();
+          trafficChart.data.datasets[0].data = tcpResult.data;
+          trafficChart.data.datasets[1].data = udpResult.data;
+          trafficChart.data.datasets[2].data = icmpResult.data;
+          trafficChart.data.datasets[3].data = allResult.data;
+          trafficChart.update('none');
 
+          // Aktualizacja drugiego wykresu
           sentReceivedChart.data.labels = formattedLabels;
-          sentReceivedChart.data.datasets[0].data = data.sent_data;
-          sentReceivedChart.data.datasets[1].data = data.received_data;
-          sentReceivedChart.update();
+          sentReceivedChart.data.datasets[0].data = sentResult.data;
+          sentReceivedChart.data.datasets[1].data = receivedResult.data;
+          sentReceivedChart.update('none');
+
+          // Aktualizacja informacji - pokazujemy rzeczywistą liczbę punktów
+          dataPointsInfo.textContent = `Punkty danych: ${formattedLabels.length} / ${data.labels.length}`;
+          lastUpdateInfo.textContent = `Ostatnia aktualizacja: ${new Date().toLocaleTimeString('pl-PL')}`;
         }
       })
-      .catch(err => console.error('❌ Błąd przy pobieraniu danych:', err));
+      .catch(err => {
+        console.error('❌ Błąd przy pobieraniu danych:', err);
+        lastUpdateInfo.textContent = `Błąd: ${new Date().toLocaleTimeString('pl-PL')}`;
+      });
   }
 
   function getChartOptions() {
     return {
       responsive: true,
+      maintainAspectRatio: false,
       interaction: {
-        mode: 'nearest',
-        axis: 'x',
+        mode: 'index',
         intersect: false
       },
       layout: {
@@ -113,36 +327,226 @@
         x: {
           ticks: {
             color: '#ffffff',
-            font: { size: 14, weight: '600' },
-            maxRotation: 0,
+            font: { size: 11, weight: '500' },
+            maxRotation: 45,
             minRotation: 0,
             autoSkip: true,
-            maxTicksLimit: 10
+            maxTicksLimit: 20  // Zwiększone z 15
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
           }
         },
         y: {
           beginAtZero: true,
-          ticks: { color: '#e0e0e0' }
+          ticks: { 
+            color: '#e0e0e0',
+            callback: function(value) {
+              if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+              if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+              return Math.round(value); // Zaokrąglenie dla lepszej czytelności
+            }
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
         }
       },
       plugins: {
         legend: {
-          labels: { color: '#e0e0e0' }
+          labels: { 
+            color: '#e0e0e0',
+            font: { size: 12 },
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+          borderWidth: 1,
+          // Precyzyjne wyświetlanie wartości w tooltip
+          callbacks: {
+            label: function(context) {
+              const label = context.dataset.label || '';
+              const value = context.parsed.y;
+              return `${label}: ${value.toLocaleString('pl-PL')}`;
+            }
+          }
         },
         zoom: {
-          pan: { enabled: true, mode: 'x' },
+          pan: { 
+            enabled: true, 
+            mode: 'x',
+            threshold: 10
+          },
           zoom: {
-            wheel: { enabled: true },
+            wheel: { enabled: true, speed: 0.1 },
             pinch: { enabled: true },
-            drag: { enabled: true },
+            drag: { 
+              enabled: true,
+              backgroundColor: 'rgba(225,225,225,0.3)'
+            },
             mode: 'x'
           }
         }
-      }
+      },
+      animation: {
+        duration: 0
+      },
+      hover: {
+        animationDuration: 0
+      },
+      responsiveAnimationDuration: 0
     };
   }
 
-  setInterval(() => fetchTrafficData(currentRange), 5000);
+  // Event listeners
+  timeRangeSlider.addEventListener('input', function() {
+    const rangeIndex = parseInt(this.value);
+    const range = timeRanges[rangeIndex];
+    currentRange = range.value;
+    timeRangeLabel.textContent = `Zakres: ${range.label}`;
+    fetchTrafficData(currentRange);
+  });
+
+  refreshIntervalSelect.addEventListener('change', function() {
+    const interval = parseInt(this.value);
+    
+    if (refreshIntervalId) {
+      clearInterval(refreshIntervalId);
+      refreshIntervalId = null;
+    }
+    
+    if (interval > 0) {
+      refreshIntervalId = setInterval(() => fetchTrafficData(), interval);
+    }
+  });
+
+  refreshBtn.addEventListener('click', () => fetchTrafficData(currentRange));
+
+  resetZoomBtn.addEventListener('click', () => {
+    trafficChart.resetZoom();
+    sentReceivedChart.resetZoom();
+  });
+
+  liveBtn.addEventListener('click', function() {
+    isLiveMode = true;
+    isPaused = false;
+    this.classList.add('active');
+    pauseBtn.classList.remove('active');
+    
+    const interval = parseInt(refreshIntervalSelect.value);
+    if (interval > 0) {
+      refreshIntervalId = setInterval(() => fetchTrafficData(), interval);
+    }
+    fetchTrafficData(currentRange);
+  });
+
+  pauseBtn.addEventListener('click', function() {
+    isPaused = true;
+    isLiveMode = false;
+    this.classList.add('active');
+    liveBtn.classList.remove('active');
+    
+    if (refreshIntervalId) {
+      clearInterval(refreshIntervalId);
+      refreshIntervalId = null;
+    }
+  });
+
+  // Obsługa klawiatury
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key) {
+        case 'r':
+          e.preventDefault();
+          fetchTrafficData(currentRange);
+          break;
+        case '=':
+        case '+':
+          e.preventDefault();
+          if (timeRangeSlider.value > 0) {
+            timeRangeSlider.value = parseInt(timeRangeSlider.value) - 1;
+            timeRangeSlider.dispatchEvent(new Event('input'));
+          }
+          break;
+        case '-':
+          e.preventDefault();
+          if (timeRangeSlider.value < timeRanges.length - 1) {
+            timeRangeSlider.value = parseInt(timeRangeSlider.value) + 1;
+            timeRangeSlider.dispatchEvent(new Event('input'));
+          }
+          break;
+      }
+    }
+    
+    if (e.key === ' ') {
+      e.preventDefault();
+      isPaused ? liveBtn.click() : pauseBtn.click();
+    }
+  });
+
+  window.addEventListener('resize', function() {
+    setTimeout(() => {
+      trafficChart.resize();
+      sentReceivedChart.resize();
+    }, 100);
+  });
+
+  // Inicjalizacja
+  liveBtn.classList.add('active');
+  refreshIntervalId = setInterval(() => fetchTrafficData(), 5000);
   fetchTrafficData(5);
 </script>
+
+<style>
+  #trafficChart, #sentReceivedChart {
+    height: 400px !important;
+    max-height: 400px;
+  }
+  
+  .container canvas {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .form-range {
+    height: 6px;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    background: #0d6efd;
+    border: 2px solid #ffffff;
+    height: 20px;
+    width: 20px;
+  }
+
+  .btn.active {
+    background-color: rgba(13, 110, 253, 0.3) !important;
+    border-color: #0d6efd !important;
+  }
+
+  .chart-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+  }
+
+  .card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .form-select:focus, .form-range:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+</style>
 {% endblock %}

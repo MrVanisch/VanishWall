@@ -38,49 +38,88 @@
 </div>
 
 <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
-    <button id="refreshLog" class="btn btn-primary">🔄 Odśwież</button>
-    <a id="downloadLink" class="btn btn-outline-secondary" href="#" download>⬇️ Pobierz</a>
-    <button class="btn btn-danger" id="clearLog">🧹 Wyczyść log</button>
+  <button id="refreshLog" class="btn btn-primary">🔄 Odśwież</button>
+  <a id="downloadLink" class="btn btn-outline-secondary" href="#" download>⬇️ Pobierz</a>
+  <button class="btn btn-danger" id="clearLog">🧹 Wyczyść log</button>
 
-    <div class="form-check ms-2">
-        <input class="form-check-input" type="checkbox" id="autoRefresh">
-        <label class="form-check-label text-white" for="autoRefresh">
-            Auto-odświeżanie
-        </label>
-    </div>
+  <div class="form-check ms-2">
+    <input class="form-check-input" type="checkbox" id="autoRefresh">
+    <label class="form-check-label text-white" for="autoRefresh">
+      Auto-odświeżanie
+    </label>
+  </div>
 
-    <div class="d-flex align-items-center">
-        <input type="number" id="refreshInterval" class="form-control form-control-sm bg-dark text-white border-secondary ms-2 me-1" value="10" min="3" max="300" style="width: 80px;">
-        <span class="text-white">sek</span>
-    </div>
+  <div class="d-flex align-items-center">
+    <input type="number" id="refreshInterval" class="form-control form-control-sm bg-dark text-white border-secondary ms-2 me-1" value="10" min="3" max="300" style="width: 80px;">
+    <span class="text-white">sek</span>
+  </div>
 </div>
-
-
 
 <pre id="logViewer" class="log-output"></pre>
 
 <script>
-    async function loadLog() {
-        const type = document.getElementById("logType").value;
-        const ip = document.getElementById("ipSearch").value;
-        const port = document.getElementById("portSearch").value;
-        const viewer = document.getElementById("logViewer");
+  async function loadLog() {
+    const type = document.getElementById("logType").value;
+    const ip = document.getElementById("ipSearch").value;
+    const port = document.getElementById("portSearch").value;
+    const viewer = document.getElementById("logViewer");
 
-        const params = new URLSearchParams({ ip, port });
-        const response = await fetch(`/api/logs/${type}?${params.toString()}`);
+    const params = new URLSearchParams({ ip, port });
+    const response = await fetch(`/api/logs/${type}?${params.toString()}`);
 
-        if (response.ok) {
-            const lines = await response.json();
-            viewer.textContent = lines.join("");
-            document.getElementById("downloadLink").href = `/download/log/${type}`;
-        } else {
-            viewer.textContent = "❌ Nie udało się załadować logu.";
-        }
+    if (response.ok) {
+      const lines = await response.json();
+      viewer.textContent = lines.join("");
+      document.getElementById("downloadLink").href = `/download/log/${type}`;
+    } else {
+      viewer.textContent = "❌ Nie udało się załadować logu.";
     }
+  }
 
-    document.getElementById("refreshLog").addEventListener("click", loadLog);
-    document.getElementById("logType").addEventListener("change", loadLog);
+  document.getElementById("refreshLog").addEventListener("click", loadLog);
+  document.getElementById("logType").addEventListener("change", loadLog);
 
-    loadLog();  // domyślne ładowanie
+  // Auto-odświeżanie
+  let autoRefreshTimer = null;
+  document.getElementById("autoRefresh").addEventListener("change", function () {
+    if (this.checked) {
+      const interval = parseInt(document.getElementById("refreshInterval").value) * 1000;
+      autoRefreshTimer = setInterval(loadLog, interval);
+    } else {
+      clearInterval(autoRefreshTimer);
+    }
+  });
+
+  document.getElementById("refreshInterval").addEventListener("change", function () {
+    if (document.getElementById("autoRefresh").checked) {
+      clearInterval(autoRefreshTimer);
+      const interval = parseInt(this.value) * 1000;
+      autoRefreshTimer = setInterval(loadLog, interval);
+    }
+  });
+
+  document.getElementById("clearLog").addEventListener("click", async () => {
+    const type = document.getElementById("logType").value;
+
+    if (!confirm(`Czy na pewno chcesz wyczyścić log: ${type}?`)) return;
+
+    const response = await fetch(`/api/logs/${type}/clear`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    const result = await response.json();
+
+    if (result.status === "success") {
+        alert(result.message);
+        loadLog(); // odśwież widok po czyszczeniu
+    } else {
+        alert("❌ Błąd: " + result.message);
+    }
+  });
+
+  loadLog(); // domyślne ładowanie
 </script>
 {% endblock %}
