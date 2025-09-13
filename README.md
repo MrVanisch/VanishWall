@@ -13,7 +13,6 @@
 **VanishWall** is a network protection system designed to:
 - 📊 Monitor and analyze live network traffic
 - 🛡️ Detect and block attacks like **SYN Flood**, **UDP Flood**, and **DNS Amplification**
-- 🤖 Leverage artificial intelligence to identify anomalies
 - 🌐 Provide a simple and secure web interface
 - 🧾 Store blocked IP addresses in a local SQLite database
 
